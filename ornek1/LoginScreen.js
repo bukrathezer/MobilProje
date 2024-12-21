@@ -16,14 +16,14 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>E-Laboratuvar Sistemi</Text>
+      <Text style={styles.title}>E-LABORATUVAR SİSTEMİ </Text>
       <TextInput
         style={styles.input}
         placeholder="Rolünüz (admin/user)"
         value={role}
         onChangeText={setRole}
       />
-      <Button title="Giriş Yap" onPress={handleLogin} />
+      <Button title="log In" onPress={handleLogin} />
     </View>
   );
 }
