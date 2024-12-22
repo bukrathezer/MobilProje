@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Button, Modal } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Button, Modal, TextInput } from 'react-native';
 
 const mockPatients = [
   {
@@ -49,12 +49,23 @@ const referenceRanges = {
 };
 
 export default function AdminDashboard() {
+  const [screen, setScreen] = useState(null); // Ekran durumu: null, "guide" veya "tracking"
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [isModalVisible, setModalVisible] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filteredPatients, setFilteredPatients] = useState(mockPatients);
 
   const handlePatientSelect = (patient) => {
     setSelectedPatient(patient);
     setModalVisible(true);
+  };
+
+  const handleSearch = (text) => {
+    setSearch(text);
+    const filtered = mockPatients.filter((patient) =>
+      patient.name.toLowerCase().includes(text.toLowerCase())
+    );
+    setFilteredPatients(filtered);
   };
 
   const getStatus = (value, range) => {
@@ -63,66 +74,89 @@ export default function AdminDashboard() {
     return 'O'; // Referans aralığında
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Admin Dashboard</Text>
+  if (screen === null) {
+    // Başlangıç ekranı
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Admin Dashboard</Text>
+        <Button
+          title="Kılavuz Oluşturma"
+          onPress={() => alert('Kılavuz oluşturma ekranı')}
+        />
+        <Button
+          title="Hasta Takibi"
+          onPress={() => setScreen('tracking')}
+          style={{ marginTop: 16 }}
+        />
+      </View>
+    );
+  }
 
-      <FlatList
-        data={mockPatients}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.listItem}>
-            <Text>Ad Soyad: {item.name}</Text>
-            <Text>TC: {item.tc}</Text>
-            <Text>Cinsiyet: {item.gender}</Text>
-            <Text>Doğum Yeri: {item.birthPlace}</Text>
-            <Text>Hasta Numarası: {item.patientNumber}</Text>
-            <Button title="Detayları Gör" onPress={() => handlePatientSelect(item)} />
-          </View>
-        )}
-      />
-
-      {/* Hasta Takibi Modal */}
-      <Modal visible={isModalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
-        <View style={styles.modalContainer}>
-          {selectedPatient && (
-            <>
-              {/* Hasta Bilgileri */}
-              <Text style={styles.modalTitle}>Hasta Bilgileri</Text>
-              <Text>Ad Soyad: {selectedPatient.name}</Text>
-              <Text>TC: {selectedPatient.tc}</Text>
-              <Text>Cinsiyet: {selectedPatient.gender}</Text>
-              <Text>Doğum Yeri: {selectedPatient.birthPlace}</Text>
-              <Text>Hasta Numarası: {selectedPatient.patientNumber}</Text>
-
-              {/* Tahlil Tablosu */}
-              <Text style={styles.modalSubtitle}>Tahlil Değerleri</Text>
-              <View style={styles.tableHeader}>
-                <Text style={styles.tableCell}>Tahlil</Text>
-                <Text style={styles.tableCell}>Değer</Text>
-                <Text style={styles.tableCell}>Durum</Text>
-                <Text style={styles.tableCell}>Referans</Text>
-              </View>
-              {Object.keys(selectedPatient.tests).map((testKey) => (
-                <View key={testKey} style={styles.tableRow}>
-                  <Text style={styles.tableCell}>{testKey}</Text>
-                  <Text style={styles.tableCell}>{selectedPatient.tests[testKey]}</Text>
-                  <Text style={styles.tableCell}>
-                    {getStatus(selectedPatient.tests[testKey], referenceRanges[testKey])}
-                  </Text>
-                  <Text style={styles.tableCell}>
-                    {referenceRanges[testKey].min}-{referenceRanges[testKey].max}
-                  </Text>
-                </View>
-              ))}
-            </>
+  if (screen === 'tracking') {
+    // Hasta Takibi Ekranı
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Hasta Takibi</Text>
+        <TextInput
+          placeholder="Hasta Adına Göre Ara"
+          style={styles.input}
+          value={search}
+          onChangeText={handleSearch}
+        />
+        <FlatList
+          data={filteredPatients}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.listItem}>
+              <Text>Ad Soyad: {item.name}</Text>
+              <Button title="Detayları Gör" onPress={() => handlePatientSelect(item)} />
+            </View>
           )}
+          ListEmptyComponent={<Text>Sonuç bulunamadı.</Text>}
+        />
+        {/* Hasta Detayları Modal */}
+        <Modal visible={isModalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
+          <View style={styles.modalContainer}>
+            {selectedPatient && (
+              <>
+                {/* Hasta Detay Bilgileri */}
+                <Text style={styles.modalTitle}>Hasta Bilgileri</Text>
+                <Text>Ad Soyad: {selectedPatient.name}</Text>
+                <Text>TC: {selectedPatient.tc}</Text>
+                <Text>Cinsiyet: {selectedPatient.gender}</Text>
+                <Text>Doğum Yeri: {selectedPatient.birthPlace}</Text>
+                <Text>Hasta Numarası: {selectedPatient.patientNumber}</Text>
 
-          <Button title="Kapat" onPress={() => setModalVisible(false)} />
-        </View>
-      </Modal>
-    </View>
-  );
+                {/* Tahlil Tablosu */}
+                <Text style={styles.modalSubtitle}>Tahlil Değerleri</Text>
+                <View style={styles.tableHeader}>
+                  <Text style={styles.tableCell}>Tahlil</Text>
+                  <Text style={styles.tableCell}>Değer</Text>
+                  <Text style={styles.tableCell}>Durum</Text>
+                  <Text style={styles.tableCell}>Referans</Text>
+                </View>
+                {Object.keys(selectedPatient.tests).map((testKey) => (
+                  <View key={testKey} style={styles.tableRow}>
+                    <Text style={styles.tableCell}>{testKey}</Text>
+                    <Text style={styles.tableCell}>{selectedPatient.tests[testKey]}</Text>
+                    <Text style={styles.tableCell}>
+                      {getStatus(selectedPatient.tests[testKey], referenceRanges[testKey])}
+                    </Text>
+                    <Text style={styles.tableCell}>
+                      {referenceRanges[testKey].min}-{referenceRanges[testKey].max}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            )}
+            <Button title="Kapat" onPress={() => setModalVisible(false)} />
+          </View>
+        </Modal>
+      </View>
+    );
+  }
+
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -180,5 +214,12 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: 14,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 16,
   },
 });
