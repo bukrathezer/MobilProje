@@ -73,11 +73,11 @@ const EditTests = ({ route, navigation }: EditTestsProps) => {
                     <TextInput
                         style={styles.input}
                         keyboardType="numeric"
-                        value={tests[key as keyof Tests]?.toString() || ''} // `key as keyof Tests` ile hata çözülür
+                        value={tests[key as keyof Tests]?.toString() || ''} // key as keyof Tests ile hata çözülür
                         onChangeText={(value) =>
                             setTests((prev) => ({
                                 ...prev,
-                                [key as keyof Tests]: parseFloat(value) || null, // `key as keyof Tests` kullanımı burada da gerekli
+                                [key as keyof Tests]: parseFloat(value) || null, // key as keyof Tests kullanımı burada da gerekli
                             }))
                         }
                     />

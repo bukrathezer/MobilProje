@@ -25,6 +25,15 @@ const SignUp = ({ navigation }: SignUpProps) => {
                 firstName,
                 lastName,
                 role: 'user',
+                tests: {
+                    IgA: 0,
+                    IgM: 0,
+                    IgG: 0,
+                    IgG1: 0,
+                    IgG2: 0,
+                    IgG3: 0,
+                    IgG4: 0,
+                },
             });
             alert('Account created successfully! You can now log in.');
             navigation.goBack(); // Giriş ekranına geri dön

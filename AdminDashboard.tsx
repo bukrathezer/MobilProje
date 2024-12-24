@@ -4,11 +4,11 @@ import { FIRESTORE_DB } from '../../FirebaseConfig';
 import { collection, getDocs } from 'firebase/firestore';
 import { NavigationProp } from '@react-navigation/native';
 
-interface Guide {
+interface User {
     id: string;
-    testName: string;
-    value: string;
-    ageRange: string;
+    firstName: string;
+    lastName: string;
+    role: string;
 }
 
 interface AdminDashboardProps {
@@ -16,35 +16,33 @@ interface AdminDashboardProps {
 }
 
 const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
-    const [guides, setGuides] = useState<Guide[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
 
     useEffect(() => {
-        const fetchGuides = async () => {
-            const guidesSnapshot = await getDocs(collection(FIRESTORE_DB, 'guides'));
-            const guidesList: Guide[] = guidesSnapshot.docs.map((doc) => ({
+        const fetchUsers = async () => {
+            const usersSnapshot = await getDocs(collection(FIRESTORE_DB, 'users'));
+            const usersList: User[] = usersSnapshot.docs.map((doc) => ({
                 id: doc.id,
                 ...doc.data(),
-            })) as Guide[];
-            setGuides(guidesList);
+            })) as User[];
+            setUsers(usersList);
         };
 
-        fetchGuides();
+        fetchUsers();
     }, []);
 
     return (
         <View style={styles.container}>
-            <Button
-                title="Create Guide"
-                onPress={() => navigation.navigate('CreateGuide')}
-            />
             <FlatList
-                data={guides}
+                data={users}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    <View style={styles.guideCard}>
-                        <Text>{item.testName}</Text>
-                        <Text>{item.value}</Text>
-                        <Text>{item.ageRange}</Text>
+                    <View style={styles.userCard}>
+                        <Text>{item.firstName} {item.lastName}</Text>
+                        <Button
+                            title="View/Edit Tests"
+                            onPress={() => navigation.navigate('EditTests', { userId: item.id })}
+                        />
                     </View>
                 )}
             />
@@ -57,7 +55,7 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 10,
     },
-    guideCard: {
+    userCard: {
         padding: 10,
         marginVertical: 5,
         backgroundColor: '#f8f9fa',
