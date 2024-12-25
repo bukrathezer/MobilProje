@@ -14,6 +14,7 @@ const SignUp = ({ navigation }: SignUpProps) => {
     const [password, setPassword] = useState('');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [age, setAge] = useState('');
     const [loading, setLoading] = useState(false);
 
     const signUp = async () => {
@@ -24,6 +25,7 @@ const SignUp = ({ navigation }: SignUpProps) => {
                 email: response.user.email,
                 firstName,
                 lastName,
+                age: parseInt(age, 10), // Store age as an integer
                 role: 'user',
                 tests: {
                     IgA: 0,
@@ -36,7 +38,7 @@ const SignUp = ({ navigation }: SignUpProps) => {
                 },
             });
             alert('Account created successfully! You can now log in.');
-            navigation.goBack(); // Giriş ekranına geri dön
+            navigation.goBack(); // Navigate back to the login screen
         } catch (error: any) {
             console.log(error);
             alert('Registration failed: ' + error.message);
@@ -76,6 +78,13 @@ const SignUp = ({ navigation }: SignUpProps) => {
                     placeholder="Password"
                     autoCapitalize="none"
                     onChangeText={(text) => setPassword(text)}
+                />
+                <TextInput
+                    value={age}
+                    style={styles.input}
+                    placeholder="Age"
+                    keyboardType="numeric"
+                    onChangeText={(text) => setAge(text)}
                 />
                 {loading ? (
                     <ActivityIndicator size="large" color="blue" />
