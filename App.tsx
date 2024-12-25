@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -8,24 +9,29 @@ import { FIREBASE_AUTH, FIRESTORE_DB } from './FirebaseConfig';
 import Login from './app/screens/Login';
 import SignUp from './app/screens/SignUp';
 import ViewTests from './app/screens/ViewTests';
+import AdminDashboard from './app/screens/AdminDashboard';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
     const [user, setUser] = useState<User | null>(null);
-    const [userInfo, setUserInfo] = useState<{ firstName: string; lastName: string } | null>(null);
+    const [userInfo, setUserInfo] = useState<{ firstName: string; lastName: string; role: string } | null>(null);
     const [initializing, setInitializing] = useState(true);
 
-    // Kullanıcı bilgilerini Firestore'dan al
     const fetchUserInfo = async (uid: string) => {
-        const userDocRef = doc(FIRESTORE_DB, 'users', uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-            const data = userDoc.data();
-            return {
-                firstName: data.firstName || '',
-                lastName: data.lastName || '',
-            };
+        try {
+            const userDocRef = doc(FIRESTORE_DB, 'users', uid);
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists()) {
+                const data = userDoc.data();
+                return {
+                    firstName: data?.firstName || 'Guest',
+                    lastName: data?.lastName || '',
+                    role: data?.role || 'user',
+                };
+            }
+        } catch (error) {
+            console.error('Error fetching user info:', error);
         }
         return null;
     };
@@ -40,26 +46,33 @@ export default function App() {
                 setUser(null);
                 setUserInfo(null);
             }
-            setInitializing(false); // Başlangıç durumu tamamlandı
+            setInitializing(false);
         });
-
         return unsubscribe;
     }, []);
 
     if (initializing) {
-        // Uygulama başlangıçta yükleniyor
-        return null; // Burada bir "Yükleniyor" ekranı da gösterebilirsiniz
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#0000ff" />
+            </View>
+        );
     }
 
     return (
         <NavigationContainer>
-            <Stack.Navigator initialRouteName="Login">
+            <Stack.Navigator>
                 {user && userInfo ? (
-                    // Kullanıcı giriş yapmışsa
-                    <>
+                    userInfo.role === 'admin' ? (
+                        <Stack.Screen
+                            name="AdminDashboard"
+                            component={AdminDashboard}
+                            options={{ headerShown: false }}
+                        />
+                    ) : (
                         <Stack.Screen
                             name="ViewTests"
-                            options={{ headerShown: false }} // Header'ı özelleştiriyoruz
+                            options={{ headerShown: false }}
                         >
                             {() => (
                                 <ViewTests
@@ -69,9 +82,8 @@ export default function App() {
                                 />
                             )}
                         </Stack.Screen>
-                    </>
+                    )
                 ) : (
-                    // Kullanıcı giriş yapmamışsa
                     <>
                         <Stack.Screen name="Login" component={Login} options={{ headerShown: false }} />
                         <Stack.Screen name="SignUp" component={SignUp} options={{ title: 'Create Account' }} />
