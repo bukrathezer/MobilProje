@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Button, StyleSheet, FlatList, TextInput, Alert } from 'react-native';
 import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { signOut, updatePassword } from 'firebase/auth';
 
 interface ViewTestsProps {
@@ -15,10 +15,18 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
     const [loading, setLoading] = useState(true);
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [userInfo, setUserInfo] = useState<{ email: string; age: number | null }>({
+    const [userInfo, setUserInfo] = useState<{
+        email: string;
+        age: number | null;
+        firstName: string;
+        lastName: string;
+    }>({
         email: '',
         age: null,
+        firstName: '',
+        lastName: '',
     });
+
     const [showUserInfo, setShowUserInfo] = useState(false);
     const [showAnalyses, setShowAnalyses] = useState(false);
 
@@ -36,7 +44,7 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
             Alert.alert('Error', 'Passwords do not match. Please try again.');
             return;
         }
-    
+
         const user = FIREBASE_AUTH.currentUser;
         if (user) {
             try {
@@ -52,7 +60,22 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
             Alert.alert('Error', 'No user is currently signed in.');
         }
     };
-    
+
+    const handleSaveUserInfo = async () => {
+        const userRef = doc(FIRESTORE_DB, 'users', userId);
+        try {
+            await updateDoc(userRef, {
+                firstName: userInfo.firstName,
+                lastName: userInfo.lastName,
+                email: userInfo.email,
+                age: userInfo.age,
+            });
+            Alert.alert('Success', 'Your information has been updated.');
+        } catch (error) {
+            console.error('Error updating user info:', error);
+            Alert.alert('Error', 'Failed to update user information. Please try again.');
+        }
+    };
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -61,6 +84,8 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                 if (userDoc.exists()) {
                     const data = userDoc.data();
                     setUserInfo({
+                        firstName: data.firstName || '',
+                        lastName: data.lastName || '',
                         email: data.email || '',
                         age: data.age || null,
                     });
@@ -89,12 +114,12 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerText}>
-                    Hoşgeldiniz {firstName} {lastName}
+                    Hoşgeldiniz {userInfo.firstName} {userInfo.lastName}
                 </Text>
                 <Button title="Log Out" onPress={handleSignOut} color="red" />
             </View>
 
-            {/* User Information */}
+            {/* User Information Button */}
             <Button
                 title="My User Information"
                 onPress={() => {
@@ -106,10 +131,34 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
             {showUserInfo && (
                 <View style={styles.userInfo}>
                     <Text style={styles.userInfoHeader}>My User Information</Text>
-                    <Text>Name: {firstName}</Text>
-                    <Text>Surname: {lastName}</Text>
-                    <Text>Age: {userInfo.age !== null ? userInfo.age : 'N/A'}</Text>
-                    <Text>Email: {userInfo.email || 'N/A'}</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="First Name"
+                        value={userInfo.firstName}
+                        onChangeText={(text) => setUserInfo({ ...userInfo, firstName: text })}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Last Name"
+                        value={userInfo.lastName}
+                        onChangeText={(text) => setUserInfo({ ...userInfo, lastName: text })}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Email"
+                        value={userInfo.email}
+                        onChangeText={(text) => setUserInfo({ ...userInfo, email: text })}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Age"
+                        value={userInfo.age ? userInfo.age.toString() : ''}
+                        onChangeText={(text) =>
+                            setUserInfo({ ...userInfo, age: text ? parseInt(text) : null })
+                        }
+                        keyboardType="numeric"
+                    />
+                    <Button title="Save Changes" onPress={handleSaveUserInfo} />
                     <TextInput
                         placeholder="New Password"
                         secureTextEntry
