@@ -21,6 +21,7 @@ interface User {
     lastName: string;
     email: string;
     role: string;
+    age: number | null;
     tests: Tests;
 }
 
@@ -46,6 +47,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                         lastName: data.lastName,
                         email: data.email,
                         role: data.role,
+                        age: data.age || null,
                         tests: data.tests || {
                             IgA: null,
                             IgM: null,
@@ -120,6 +122,9 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                         </Text>
                         <Text style={styles.userInfo}>
                             <Text style={styles.label}>Email:</Text> {item.email}
+                        </Text>
+                        <Text style={styles.userInfo}>
+                            <Text style={styles.label}>Age:</Text> {item.age ?? 'N/A'}
                         </Text>
                         <Button title="Edit Tests" onPress={() => handleEdit(item)} />
                     </View>
