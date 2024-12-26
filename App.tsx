@@ -31,7 +31,7 @@ export default function App() {
                 };
             }
         } catch (error) {
-            console.error('Error fetching user info:', error);
+            console.error('Error fetching user info: ', error);
         }
         return null;
     };
