@@ -204,6 +204,13 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                             <Text style={styles.label}>Age:</Text> {item.age ?? 'N/A'}
                         </Text>
                         <Button title="Edit Tests" onPress={() => handleEdit(item)} />
+                        <View style={styles.addTestButton}>
+                            <Button
+                                title="Add Test"
+                                onPress={() => console.log('Add Test button clicked for', item.firstName)}
+                                color="#5cb85c" // Green color
+                            />
+                        </View>
                     </View>
                 )}
             />
@@ -409,6 +416,11 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlign: 'center',
     },
+    // Add all your styles here, including the new addTestButton style
+        addTestButton: {
+            marginTop: 10,
+        },
+    
 });
 
 export default AdminDashboard;
