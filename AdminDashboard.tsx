@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, Button, StyleSheet, Alert, TextInput, Modal, TouchableOpacity } from 'react-native';
 import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
-import { collection, getDocs, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where, doc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { NavigationProp } from '@react-navigation/native';
 
@@ -13,6 +13,11 @@ interface Tests {
     IgG2: number | null;
     IgG3: number | null;
     IgG4: number | null;
+}
+
+interface Guide {
+    testType: string;
+    ranges: { ageGroup: string; min: number | null; max: number | null }[];
 }
 
 interface User {
@@ -33,6 +38,9 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const [users, setUsers] = useState<User[]>([]);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
+    const [guideModalVisible, setGuideModalVisible] = useState(false);
+    const [selectedTest, setSelectedTest] = useState<string | null>(null);
+    const [guideData, setGuideData] = useState<Guide | null>(null);
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -109,9 +117,55 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         setEditingUser({ ...editingUser, tests: updatedTests });
     };
 
+    const handleCreateGuide = () => {
+        setGuideModalVisible(true);
+    };
+
+    const handleSelectTest = (test: string) => {
+        setSelectedTest(test);
+        setGuideData({
+            testType: test,
+            ranges: [
+                { ageGroup: '25-36 months', min: null, max: null },
+                { ageGroup: '3-5 years', min: null, max: null },
+                { ageGroup: '6-8 years', min: null, max: null },
+                { ageGroup: '9-11 years', min: null, max: null },
+                { ageGroup: '12-16 years', min: null, max: null },
+                { ageGroup: '16-18 years', min: null, max: null },
+                { ageGroup: 'Total', min: null, max: null },
+            ],
+        });
+    };
+
+    const handleGuideChange = (index: number, key: 'min' | 'max', value: string) => {
+        if (!guideData) return;
+
+        const updatedRanges = [...guideData.ranges];
+        updatedRanges[index][key] = value ? parseFloat(value) : null;
+
+        setGuideData({ ...guideData, ranges: updatedRanges });
+    };
+
+    const saveGuideToDatabase = async () => {
+        if (!guideData) return;
+
+        try {
+            await addDoc(collection(FIRESTORE_DB, 'guides'), guideData);
+            Alert.alert('Success', 'Guide saved successfully.');
+            setGuideModalVisible(false);
+        } catch (error) {
+            console.error('Error saving guide:', error);
+            Alert.alert('Error', 'Failed to save guide. Please try again.');
+        }
+    };
+
     return (
         <View style={styles.container}>
-            <Button title="Logout" onPress={handleLogout} color="#d9534f" />
+            <View style={styles.headerButtons}>
+                <Button title="Logout" onPress={handleLogout} color="#d9534f" />
+                <Button title="Create a Guide" onPress={handleCreateGuide} color="#5bc0de" />
+            </View>
+
             <FlatList
                 data={users}
                 keyExtractor={(item) => item.id}
@@ -130,6 +184,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     </View>
                 )}
             />
+
             {editingUser && (
                 <Modal visible={modalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
@@ -158,6 +213,54 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     </View>
                 </Modal>
             )}
+
+            {guideModalVisible && (
+                <Modal visible={guideModalVisible} animationType="slide" transparent={true}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            {!selectedTest ? (
+                                <>
+                                    <Text style={styles.modalTitle}>Select Test</Text>
+                                    {['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'].map((test) => (
+                                        <Button key={test} title={test} onPress={() => handleSelectTest(test)} />
+                                    ))}
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={styles.modalTitle}>Guide for {selectedTest}</Text>
+                                    {guideData?.ranges.map((range, index) => (
+                                        <View key={index} style={styles.inputContainer}>
+                                            <Text>{range.ageGroup}</Text>
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="Min"
+                                                keyboardType="numeric"
+                                                value={range.min?.toString() || ''}
+                                                onChangeText={(value) => handleGuideChange(index, 'min', value)}
+                                            />
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="Max"
+                                                keyboardType="numeric"
+                                                value={range.max?.toString() || ''}
+                                                onChangeText={(value) => handleGuideChange(index, 'max', value)}
+                                            />
+                                        </View>
+                                    ))}
+                                    <View style={styles.buttonRow}>
+                                        <Button title="Save Guide" onPress={saveGuideToDatabase} />
+                                        <Button
+                                            title="Cancel"
+                                            onPress={() => setGuideModalVisible(false)}
+                                            color="#d9534f"
+                                        />
+                                    </View>
+                                </>
+                            )}
+                        </View>
+                    </View>
+                </Modal>
+            )}
         </View>
     );
 };
@@ -167,6 +270,11 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 10,
         backgroundColor: '#ffffff',
+    },
+    headerButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 10,
     },
     userCard: {
         padding: 15,
@@ -205,6 +313,7 @@ const styles = StyleSheet.create({
         borderColor: '#ccc',
         padding: 5,
         borderRadius: 5,
+        marginBottom: 5,
     },
     buttonRow: {
         flexDirection: 'row',
