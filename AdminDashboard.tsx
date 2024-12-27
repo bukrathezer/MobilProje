@@ -81,28 +81,36 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
 
     const addTestForUser = async (user: User) => {
-        try {
-            const userTestsCollectionRef = collection(FIRESTORE_DB, `users/${user.id}/tests`);
+        // Modal veya form gösterimi için state oluşturun (input alanları)
+        setEditingUser(user);
+        setModalVisible(true);  // Modal'ı açıyoruz
+    };
 
+    const handleTestSave = async () => {
+        if (!editingUser) return;
+    
+        try {
+            // Kullanıcıdan alınan verileri Firestore'a ekliyoruz
+            const userTestsCollectionRef = collection(FIRESTORE_DB, `users/${editingUser.id}/tests`);
+    
             await addDoc(userTestsCollectionRef, {
-                IgA: null,
-                IgM: null,
-                IgG: null,
-                IgG1: null,
-                IgG2: null,
-                IgG3: null,
-                IgG4: null,
+                IgA: editingUser.tests.IgA,
+                IgM: editingUser.tests.IgM,
+                IgG: editingUser.tests.IgG,
+                IgG1: editingUser.tests.IgG1,
+                IgG2: editingUser.tests.IgG2,
+                IgG3: editingUser.tests.IgG3,
+                IgG4: editingUser.tests.IgG4,
                 timestamp: new Date(),
             });
-
+    
             Alert.alert('Success', 'New test entry created successfully.');
+            setModalVisible(false); // Modal'ı kapatıyoruz
         } catch (error) {
             console.error('Error adding new test:', error);
             Alert.alert('Error', 'Failed to create new test. Please try again.');
         }
     };
-
-
 
 
 
@@ -153,7 +161,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
         const updatedTests = {
             ...editingUser.tests,
-            [key]: value ? parseFloat(value) : null,
+            [key]: value ? parseFloat(value) : 0,
         };
 
         setEditingUser({ ...editingUser, tests: updatedTests });
@@ -270,6 +278,33 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     </View>
                 </Modal>
             )}
+            {editingUser && (
+    <Modal visible={modalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Enter Test Values</Text>
+
+                {/* Kullanıcıdan test verileri alınıyor */}
+                {['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'].map((test) => (
+                    <View key={test} style={styles.inputContainer}>
+                        <Text>{test}</Text>
+                        <TextInput
+                            style={styles.input}
+                            keyboardType="numeric"
+                            value={editingUser.tests[test as keyof Tests]?.toString() || ''}
+                            onChangeText={(value) => handleTestChange(test as keyof Tests, value)}
+                        />
+                    </View>
+                ))}
+
+                <View style={styles.buttonRow}>
+                    <Button title="Save" onPress={handleTestSave} />
+                    <Button title="Cancel" onPress={() => setModalVisible(false)} color="#d9534f" />
+                </View>
+            </View>
+        </View>
+    </Modal>
+)}
 
             {guideModalVisible && (
                 <Modal visible={guideModalVisible} animationType="slide" transparent={true}>
