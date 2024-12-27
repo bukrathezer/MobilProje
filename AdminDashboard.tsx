@@ -4,6 +4,7 @@ import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, getDocs, addDoc, query, where, doc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { NavigationProp } from '@react-navigation/native';
+import { ToastAndroid } from 'react-native'; // For displaying the guide created message
 
 interface Tests {
     IgA: number | null;
@@ -119,6 +120,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
     const handleCreateGuide = () => {
         setGuideModalVisible(true);
+        setSelectedTest(null); // Reset test selection when opening the guide creation modal
     };
 
     const handleSelectTest = (test: string) => {
@@ -151,12 +153,18 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
         try {
             await addDoc(collection(FIRESTORE_DB, 'guides'), guideData);
-            Alert.alert('Success', 'Guide saved successfully.');
-            setGuideModalVisible(false);
+            ToastAndroid.show('Guide created', ToastAndroid.SHORT); // Display guide created message
+            setGuideModalVisible(false); // Close the guide creation modal
+            setSelectedTest(null); // Reset selected test after saving
         } catch (error) {
             console.error('Error saving guide:', error);
             Alert.alert('Error', 'Failed to save guide. Please try again.');
         }
+    };
+
+    const handleCloseGuideModal = () => {
+        setGuideModalVisible(false);
+        setSelectedTest(null); // Reset selected test when closing
     };
 
     return (
@@ -251,8 +259,13 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                         <Button title="Save Guide" onPress={saveGuideToDatabase} />
                                         <Button
                                             title="Cancel"
-                                            onPress={() => setGuideModalVisible(false)}
+                                            onPress={handleCloseGuideModal}
                                             color="#d9534f"
+                                        />
+                                        <Button
+                                            title="Close"
+                                            onPress={handleCloseGuideModal}
+                                            color="#5bc0de"
                                         />
                                     </View>
                                 </>
