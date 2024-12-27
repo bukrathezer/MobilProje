@@ -79,6 +79,33 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         fetchUsers();
     }, []);
 
+
+    const addTestForUser = async (user: User) => {
+        try {
+            const userTestsCollectionRef = collection(FIRESTORE_DB, `users/${user.id}/tests`);
+
+            await addDoc(userTestsCollectionRef, {
+                IgA: null,
+                IgM: null,
+                IgG: null,
+                IgG1: null,
+                IgG2: null,
+                IgG3: null,
+                IgG4: null,
+                timestamp: new Date(),
+            });
+
+            Alert.alert('Success', 'New test entry created successfully.');
+        } catch (error) {
+            console.error('Error adding new test:', error);
+            Alert.alert('Error', 'Failed to create new test. Please try again.');
+        }
+    };
+
+
+
+
+
     const fetchGuides = async () => {
         try {
             const guidesSnapshot = await getDocs(collection(FIRESTORE_DB, 'guides'));
@@ -207,8 +234,8 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                         <View style={styles.addTestButton}>
                             <Button
                                 title="Add Test"
-                                onPress={() => console.log('Add Test button clicked for', item.firstName)}
-                                color="#5cb85c" // Green color
+                                onPress={() => addTestForUser(item)} // Add test for the user
+                                color="#5cb85c"
                             />
                         </View>
                     </View>
@@ -422,5 +449,4 @@ const styles = StyleSheet.create({
         },
     
 });
-
 export default AdminDashboard;
