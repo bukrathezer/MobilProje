@@ -40,6 +40,16 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const [guides, setGuides] = useState<Guide[]>([]);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
+    const [addTestModalVisible, setAddTestModalVisible] = useState(false);
+    const [newTestData, setNewTestData] = useState<Tests>({
+        IgA: null,
+        IgM: null,
+        IgG: null,
+        IgG1: null,
+        IgG2: null,
+        IgG3: null,
+        IgG4: null,
+    });
     const [guideModalVisible, setGuideModalVisible] = useState(false);
     const [guidesModalVisible, setGuidesModalVisible] = useState(false);
     const [selectedTest, setSelectedTest] = useState<string | null>(null);
@@ -108,6 +118,11 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         setModalVisible(true);
     };
 
+    const handleAddTest = (user: User) => {
+        setEditingUser(user);
+        setAddTestModalVisible(true);
+    };
+
     const handleSave = async () => {
         if (!editingUser) return;
 
@@ -121,6 +136,21 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         }
     };
 
+    const handleSaveTest = async () => {
+        if (!editingUser || !newTestData) return;
+
+        try {
+            // Preserve the old test data and add the new test data
+            const updatedTests = { ...editingUser.tests, ...newTestData };
+            await updateDoc(doc(FIRESTORE_DB, 'users', editingUser.id), { tests: updatedTests });
+            Alert.alert('Success', 'Test added successfully.');
+            setAddTestModalVisible(false);
+        } catch (error) {
+            console.error('Error adding test:', error);
+            Alert.alert('Error', 'Failed to add test. Please try again.');
+        }
+    };
+
     const handleTestChange = (key: keyof Tests, value: string) => {
         if (!editingUser) return;
 
@@ -130,6 +160,14 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         };
 
         setEditingUser({ ...editingUser, tests: updatedTests });
+    };
+
+    const handleTestInputChange = (key: keyof Tests, value: string) => {
+        const updatedTestData = {
+            ...newTestData,
+            [key]: value ? parseFloat(value) : null,
+        };
+        setNewTestData(updatedTestData);
     };
 
     const handleCreateGuide = () => {
@@ -204,10 +242,12 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                             <Text style={styles.label}>Age:</Text> {item.age ?? 'N/A'}
                         </Text>
                         <Button title="Edit Tests" onPress={() => handleEdit(item)} />
+                        <Button title="Add Test" onPress={() => handleAddTest(item)} color="#5bc0de" />
                     </View>
                 )}
             />
 
+            {/* Edit Test Modal */}
             {editingUser && (
                 <Modal visible={modalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
@@ -237,88 +277,75 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 </Modal>
             )}
 
-            {guideModalVisible && (
-                <Modal visible={guideModalVisible} animationType="slide" transparent={true}>
+            {/* Add Test Modal */}
+            {addTestModalVisible && (
+                <Modal visible={addTestModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
                         <View style={styles.modalContent}>
-                            {!selectedTest ? (
-                                <>
-                                    <Text style={styles.modalTitle}>Select Test</Text>
-                                    {['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'].map((test) => (
-                                        <Button key={test} title={test} onPress={() => handleSelectTest(test)} />
-                                    ))}
-                                    <Button
-                                        title="Close"
-                                        onPress={handleCloseGuideModal}
-                                        color="#d9534f"
+                            <Text style={styles.modalTitle}>Add Test Values</Text>
+                            {Object.keys(newTestData).map((key) => (
+                                <View key={key} style={styles.inputContainer}>
+                                    <Text>{key}</Text>
+                                    <TextInput
+                                        style={styles.input}
+                                        keyboardType="numeric"
+                                        value={newTestData[key as keyof Tests]?.toString() || ''}
+                                        onChangeText={(value) => handleTestInputChange(key as keyof Tests, value)}
                                     />
-                                </>
-                            ) : (
-                                <>
-                                    <Text style={styles.modalTitle}>Guide for {selectedTest}</Text>
-                                    {guideData?.ranges.map((range, index) => (
-                                        <View key={index} style={styles.inputContainer}>
-                                            <Text>{range.ageGroup}</Text>
-                                            <TextInput
-                                                style={styles.input}
-                                                placeholder="Min"
-                                                keyboardType="numeric"
-                                                value={range.min?.toString() || ''}
-                                                onChangeText={(value) => handleGuideChange(index, 'min', value)}
-                                            />
-                                            <TextInput
-                                                style={styles.input}
-                                                placeholder="Max"
-                                                keyboardType="numeric"
-                                                value={range.max?.toString() || ''}
-                                                onChangeText={(value) => handleGuideChange(index, 'max', value)}
-                                            />
-                                        </View>
-                                    ))}
-                                    <View style={styles.buttonRow}>
-                                        <Button title="Save Guide" onPress={saveGuideToDatabase} />
-                                        <Button
-                                            title="Cancel"
-                                            onPress={handleCloseGuideModal}
-                                            color="#d9534f"
-                                        />
-                                    </View>
-                                </>
-                            )}
+                                </View>
+                            ))}
+                            <View style={styles.buttonRow}>
+                                <Button title="Save Test" onPress={handleSaveTest} />
+                                <Button
+                                    title="Cancel"
+                                    onPress={() => setAddTestModalVisible(false)}
+                                    color="#d9534f"
+                                />
+                            </View>
                         </View>
                     </View>
                 </Modal>
             )}
 
-            {guidesModalVisible && (
-                <Modal visible={guidesModalVisible} animationType="slide" transparent={true}>
+            {/* Guide Modal */}
+            {guideModalVisible && selectedTest && (
+                <Modal visible={guideModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
                         <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Saved Guides</Text>
+                            <Text style={styles.modalTitle}>Create Guide for {selectedTest}</Text>
                             <ScrollView>
-                                {guides.map((guide, index) => (
-                                    <View key={index} style={styles.guideContainer}>
-                                        <Text style={styles.guideTitle}>Test: {guide.testType}</Text>
-                                        <View style={styles.tableHeader}>
-                                            <Text style={styles.tableCell}>Age Group</Text>
-                                            <Text style={styles.tableCell}>Min</Text>
-                                            <Text style={styles.tableCell}>Max</Text>
-                                        </View>
-                                        {guide.ranges.map((range, rangeIndex) => (
-                                            <View key={rangeIndex} style={styles.tableRow}>
-                                                <Text style={styles.tableCell}>{range.ageGroup}</Text>
-                                                <Text style={styles.tableCell}>{range.min ?? 'N/A'}</Text>
-                                                <Text style={styles.tableCell}>{range.max ?? 'N/A'}</Text>
-                                            </View>
-                                        ))}
+                                {guideData?.ranges.map((range, index) => (
+                                    <View key={index} style={styles.inputContainer}>
+                                        <Text>{range.ageGroup}</Text>
+                                        <TextInput
+                                            style={styles.input}
+                                            placeholder="Min"
+                                            keyboardType="numeric"
+                                            value={range.min?.toString() || ''}
+                                            onChangeText={(value) =>
+                                                handleGuideChange(index, 'min', value)
+                                            }
+                                        />
+                                        <TextInput
+                                            style={styles.input}
+                                            placeholder="Max"
+                                            keyboardType="numeric"
+                                            value={range.max?.toString() || ''}
+                                            onChangeText={(value) =>
+                                                handleGuideChange(index, 'max', value)
+                                            }
+                                        />
                                     </View>
                                 ))}
                             </ScrollView>
-                            <Button
-                                title="Close"
-                                onPress={() => setGuidesModalVisible(false)}
-                                color="#d9534f"
-                            />
+                            <View style={styles.buttonRow}>
+                                <Button title="Save Guide" onPress={saveGuideToDatabase} />
+                                <Button
+                                    title="Cancel"
+                                    onPress={handleCloseGuideModal}
+                                    color="#d9534f"
+                                />
+                            </View>
                         </View>
                     </View>
                 </Modal>
@@ -330,19 +357,22 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 10,
-        backgroundColor: '#ffffff',
+        padding: 20,
+        backgroundColor: '#fff',
     },
     headerButtons: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 10,
+        marginBottom: 20,
     },
     userCard: {
+        backgroundColor: '#f8f8f8',
         padding: 15,
-        marginVertical: 8,
-        backgroundColor: '#f1f1f1',
+        marginBottom: 15,
         borderRadius: 8,
+        shadowOpacity: 0.1,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 2 },
     },
     userInfo: {
         fontSize: 16,
@@ -351,63 +381,37 @@ const styles = StyleSheet.create({
     label: {
         fontWeight: 'bold',
     },
-    modalContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    },
-    modalContent: {
-        backgroundColor: 'white',
-        margin: 20,
-        padding: 20,
-        borderRadius: 10,
-    },
-    modalTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 10,
-    },
     inputContainer: {
         marginBottom: 10,
     },
     input: {
         borderWidth: 1,
-        borderColor: '#ccc',
-        padding: 5,
-        borderRadius: 5,
+        borderColor: '#ddd',
+        padding: 10,
         marginBottom: 5,
+        borderRadius: 5,
     },
     buttonRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 20,
     },
-    guideContainer: {
-        marginBottom: 15,
-        padding: 10,
-        backgroundColor: '#f9f9f9',
-        borderRadius: 5,
-    },
-    guideTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 5,
-    },
-    tableHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        backgroundColor: '#e9e9e9',
-        padding: 5,
-        borderRadius: 5,
-    },
-    tableRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 5,
-    },
-    tableCell: {
+    modalContainer: {
         flex: 1,
-        textAlign: 'center',
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: '#fff',
+        padding: 20,
+        borderRadius: 10,
+        width: '80%',
+        maxHeight: '80%',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 15,
     },
 });
 
