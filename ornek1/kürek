@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'; 
-import { View, Text, FlatList, Button, StyleSheet, Alert, Modal } from 'react-native';
+import { View, Text, FlatList, Button, StyleSheet, Alert, Modal, ScrollView } from 'react-native';
 import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -150,43 +150,46 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>Tests for {editingUser.firstName} {editingUser.lastName}</Text>
                             
-                            {/* Display Tests in separate tables for each test type */}
-                            {userTests[editingUser.id]?.map((test, index) => (
-                                <View key={index} style={styles.tableContainer}>
-                                    <View style={styles.tableHeader}>
-                                        <Text style={styles.tableCell}>Test Type</Text>
-                                        <Text style={styles.tableCell}>Value</Text>
+                            {/* Add ScrollView to make the content scrollable */}
+                            <ScrollView style={styles.scrollViewContainer}>
+                                {/* Display Tests in separate tables for each test type */}
+                                {userTests[editingUser.id]?.map((test, index) => (
+                                    <View key={index} style={styles.tableContainer}>
+                                        <View style={styles.tableHeader}>
+                                            <Text style={styles.tableCell}>Test Type</Text>
+                                            <Text style={styles.tableCell}>Value</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                            <Text style={styles.tableCell}>IgA</Text>
+                                            <Text style={styles.tableCell}>{test.IgA ?? 'N/A'}</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                            <Text style={styles.tableCell}>IgM</Text>
+                                            <Text style={styles.tableCell}>{test.IgM ?? 'N/A'}</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                            <Text style={styles.tableCell}>IgG</Text>
+                                            <Text style={styles.tableCell}>{test.IgG ?? 'N/A'}</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                            <Text style={styles.tableCell}>IgG1</Text>
+                                            <Text style={styles.tableCell}>{test.IgG1 ?? 'N/A'}</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                            <Text style={styles.tableCell}>IgG2</Text>
+                                            <Text style={styles.tableCell}>{test.IgG2 ?? 'N/A'}</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                            <Text style={styles.tableCell}>IgG3</Text>
+                                            <Text style={styles.tableCell}>{test.IgG3 ?? 'N/A'}</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                            <Text style={styles.tableCell}>IgG4</Text>
+                                            <Text style={styles.tableCell}>{test.IgG4 ?? 'N/A'}</Text>
+                                        </View>
                                     </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgA</Text>
-                                        <Text style={styles.tableCell}>{test.IgA ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgM</Text>
-                                        <Text style={styles.tableCell}>{test.IgM ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG</Text>
-                                        <Text style={styles.tableCell}>{test.IgG ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG1</Text>
-                                        <Text style={styles.tableCell}>{test.IgG1 ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG2</Text>
-                                        <Text style={styles.tableCell}>{test.IgG2 ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG3</Text>
-                                        <Text style={styles.tableCell}>{test.IgG3 ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG4</Text>
-                                        <Text style={styles.tableCell}>{test.IgG4 ?? 'N/A'}</Text>
-                                    </View>
-                                </View>
-                            ))}
+                                ))}
+                            </ScrollView>
 
                             <View style={styles.buttonRow}>
                                 <Button title="Close" onPress={() => setModalVisible(false)} color="#d9534f" />
@@ -238,6 +241,9 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 10,
+    },
+    scrollViewContainer: {
+        maxHeight: '70%', // Adjust based on your screen size
     },
     tableContainer: {
         marginBottom: 15,
