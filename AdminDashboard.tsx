@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Button, StyleSheet, Alert, TextInput, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, Button, StyleSheet, Alert, TextInput, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, getDocs, addDoc, query, where, doc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -37,9 +37,11 @@ interface AdminDashboardProps {
 
 const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const [users, setUsers] = useState<User[]>([]);
+    const [guides, setGuides] = useState<Guide[]>([]);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [guideModalVisible, setGuideModalVisible] = useState(false);
+    const [guidesModalVisible, setGuidesModalVisible] = useState(false);
     const [selectedTest, setSelectedTest] = useState<string | null>(null);
     const [guideData, setGuideData] = useState<Guide | null>(null);
 
@@ -76,6 +78,18 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
         fetchUsers();
     }, []);
+
+    const fetchGuides = async () => {
+        try {
+            const guidesSnapshot = await getDocs(collection(FIRESTORE_DB, 'guides'));
+            const guidesList: Guide[] = guidesSnapshot.docs.map((doc) => doc.data() as Guide);
+            setGuides(guidesList);
+            setGuidesModalVisible(true);
+        } catch (error) {
+            console.error('Error fetching guides:', error);
+            Alert.alert('Error', 'Failed to fetch guides. Please try again.');
+        }
+    };
 
     const handleLogout = async () => {
         try {
@@ -172,6 +186,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             <View style={styles.headerButtons}>
                 <Button title="Logout" onPress={handleLogout} color="#d9534f" />
                 <Button title="Create a Guide" onPress={handleCreateGuide} color="#5bc0de" />
+                <Button title="My Guides" onPress={fetchGuides} color="#5cb85c" />
             </View>
 
             <FlatList
@@ -232,6 +247,11 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                     {['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'].map((test) => (
                                         <Button key={test} title={test} onPress={() => handleSelectTest(test)} />
                                     ))}
+                                    <Button
+                                        title="Close"
+                                        onPress={handleCloseGuideModal}
+                                        color="#d9534f"
+                                    />
                                 </>
                             ) : (
                                 <>
@@ -262,14 +282,43 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                             onPress={handleCloseGuideModal}
                                             color="#d9534f"
                                         />
-                                        <Button
-                                            title="Close"
-                                            onPress={handleCloseGuideModal}
-                                            color="#5bc0de"
-                                        />
                                     </View>
                                 </>
                             )}
+                        </View>
+                    </View>
+                </Modal>
+            )}
+
+            {guidesModalVisible && (
+                <Modal visible={guidesModalVisible} animationType="slide" transparent={true}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Saved Guides</Text>
+                            <ScrollView>
+                                {guides.map((guide, index) => (
+                                    <View key={index} style={styles.guideContainer}>
+                                        <Text style={styles.guideTitle}>Test: {guide.testType}</Text>
+                                        <View style={styles.tableHeader}>
+                                            <Text style={styles.tableCell}>Age Group</Text>
+                                            <Text style={styles.tableCell}>Min</Text>
+                                            <Text style={styles.tableCell}>Max</Text>
+                                        </View>
+                                        {guide.ranges.map((range, rangeIndex) => (
+                                            <View key={rangeIndex} style={styles.tableRow}>
+                                                <Text style={styles.tableCell}>{range.ageGroup}</Text>
+                                                <Text style={styles.tableCell}>{range.min ?? 'N/A'}</Text>
+                                                <Text style={styles.tableCell}>{range.max ?? 'N/A'}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                ))}
+                            </ScrollView>
+                            <Button
+                                title="Close"
+                                onPress={() => setGuidesModalVisible(false)}
+                                color="#d9534f"
+                            />
                         </View>
                     </View>
                 </Modal>
@@ -332,6 +381,33 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginTop: 20,
+    },
+    guideContainer: {
+        marginBottom: 15,
+        padding: 10,
+        backgroundColor: '#f9f9f9',
+        borderRadius: 5,
+    },
+    guideTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 5,
+    },
+    tableHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        backgroundColor: '#e9e9e9',
+        padding: 5,
+        borderRadius: 5,
+    },
+    tableRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: 5,
+    },
+    tableCell: {
+        flex: 1,
+        textAlign: 'center',
     },
 });
 
