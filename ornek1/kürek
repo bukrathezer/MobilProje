@@ -1,0 +1,271 @@
+import React, { useEffect, useState } from 'react'; 
+import { View, Text, FlatList, Button, StyleSheet, Alert, Modal } from 'react-native';
+import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
+import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
+import { NavigationProp } from '@react-navigation/native';
+
+interface Tests {
+    IgA: number | null;
+    IgM: number | null;
+    IgG: number | null;
+    IgG1: number | null;
+    IgG2: number | null;
+    IgG3: number | null;
+    IgG4: number | null;
+}
+
+interface User {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: string;
+    age: number | null;
+}
+
+interface AdminDashboardProps {
+    navigation: NavigationProp<any, any>;
+}
+
+const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
+    const [users, setUsers] = useState<User[]>([]);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [userTests, setUserTests] = useState<{ [key: string]: Tests[] }>({}); // Stores tests per user
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            try {
+                const q = query(collection(FIRESTORE_DB, 'users'), where('role', '==', 'user'));
+                const usersSnapshot = await getDocs(q);
+                const usersList: User[] = usersSnapshot.docs.map((doc) => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        firstName: data.firstName,
+                        lastName: data.lastName,
+                        email: data.email,
+                        role: data.role,
+                        age: data.age || null,
+                    };
+                });
+                setUsers(usersList);
+            } catch (error) {
+                console.error('Error fetching users:', error);
+            }
+        };
+
+        fetchUsers();
+    }, []);
+
+    const addTestForUser = async (user: User) => {
+        setEditingUser(user);
+        setModalVisible(true); // Open modal to add a test for the user
+    };
+
+    const handleTestSave = async () => {
+        if (!editingUser) return;
+
+        try {
+            const userTestsCollectionRef = collection(FIRESTORE_DB, `users/${editingUser.id}/tests`);
+            await addDoc(userTestsCollectionRef, {
+                IgA: 1, // Just a placeholder value, replace with actual input values
+                IgM: 1,
+                IgG: 1,
+                IgG1: 1,
+                IgG2: 1,
+                IgG3: 1,
+                IgG4: 1,
+                timestamp: new Date(),
+            });
+            Alert.alert('Success', 'Test entry created successfully.');
+            setModalVisible(false); // Close modal after saving
+        } catch (error) {
+            console.error('Error adding test:', error);
+            Alert.alert('Error', 'Failed to create test. Please try again.');
+        }
+    };
+
+    const fetchTestsForUser = async (user: User) => {
+        try {
+            const testsSnapshot = await getDocs(collection(FIRESTORE_DB, `users/${user.id}/tests`));
+            const testsList: Tests[] = testsSnapshot.docs.map((doc) => doc.data() as Tests);
+            setUserTests((prevState) => ({
+                ...prevState,
+                [user.id]: testsList, // Set tests for the selected user
+            }));
+        } catch (error) {
+            console.error('Error fetching tests:', error);
+        }
+    };
+
+    const handleEdit = (user: User) => {
+        setEditingUser(user);
+        setModalVisible(true);
+        fetchTestsForUser(user); // Fetch tests for the selected user
+    };
+
+    const handleLogout = async () => {
+        try {
+            await signOut(FIREBASE_AUTH);
+            Alert.alert('Success', 'Logged out successfully', [{ text: 'OK', onPress: () => navigation.navigate('Login') }]);
+        } catch (error) {
+            console.error('Error logging out:', error);
+            Alert.alert('Error', 'Logout failed.');
+        }
+    };
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.headerButtons}>
+                <Button title="Logout" onPress={handleLogout} color="#d9534f" />
+            </View>
+
+            <FlatList
+                data={users}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                    <View style={styles.userCard}>
+                        <Text style={styles.userInfo}>
+                            <Text style={styles.label}>Name:</Text> {item.firstName} {item.lastName}
+                        </Text>
+                        <Text style={styles.userInfo}>
+                            <Text style={styles.label}>Email:</Text> {item.email}
+                        </Text>
+                        <Text style={styles.userInfo}>
+                            <Text style={styles.label}>Age:</Text> {item.age ?? 'N/A'}
+                        </Text>
+                        <Button title="Edit Tests" onPress={() => handleEdit(item)} />
+                        <View style={styles.addTestButton}>
+                            <Button title="Add Test" onPress={() => addTestForUser(item)} color="#5cb85c" />
+                        </View>
+                    </View>
+                )}
+            />
+
+            {editingUser && (
+                <Modal visible={modalVisible} animationType="slide" transparent={true}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Tests for {editingUser.firstName} {editingUser.lastName}</Text>
+                            
+                            {/* Display Tests in separate tables for each test type */}
+                            {userTests[editingUser.id]?.map((test, index) => (
+                                <View key={index} style={styles.tableContainer}>
+                                    <View style={styles.tableHeader}>
+                                        <Text style={styles.tableCell}>Test Type</Text>
+                                        <Text style={styles.tableCell}>Value</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgA</Text>
+                                        <Text style={styles.tableCell}>{test.IgA ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgM</Text>
+                                        <Text style={styles.tableCell}>{test.IgM ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG</Text>
+                                        <Text style={styles.tableCell}>{test.IgG ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG1</Text>
+                                        <Text style={styles.tableCell}>{test.IgG1 ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG2</Text>
+                                        <Text style={styles.tableCell}>{test.IgG2 ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG3</Text>
+                                        <Text style={styles.tableCell}>{test.IgG3 ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG4</Text>
+                                        <Text style={styles.tableCell}>{test.IgG4 ?? 'N/A'}</Text>
+                                    </View>
+                                </View>
+                            ))}
+
+                            <View style={styles.buttonRow}>
+                                <Button title="Close" onPress={() => setModalVisible(false)} color="#d9534f" />
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+            )}
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        padding: 10,
+        backgroundColor: '#ffffff',
+    },
+    headerButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    userCard: {
+        padding: 15,
+        marginVertical: 8,
+        backgroundColor: '#f1f1f1',
+        borderRadius: 8,
+    },
+    userInfo: {
+        fontSize: 16,
+        marginBottom: 5,
+    },
+    label: {
+        fontWeight: 'bold',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        margin: 20,
+        padding: 20,
+        borderRadius: 10,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    tableContainer: {
+        marginBottom: 15,
+    },
+    tableHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        backgroundColor: '#e9e9e9',
+        padding: 5,
+        borderRadius: 5,
+    },
+    tableRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: 5,
+    },
+    tableCell: {
+        flex: 1,
+        textAlign: 'center',
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+    },
+    addTestButton: {
+        marginTop: 10,
+    },
+});
+
+export default AdminDashboard;
