@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Button, StyleSheet, Alert, TextInput, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react'; 
+import { View, Text, FlatList, Button, StyleSheet, Alert, Modal, ScrollView, TextInput } from 'react-native';
 import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
-import { collection, getDocs, addDoc, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { NavigationProp } from '@react-navigation/native';
 import { ToastAndroid } from 'react-native'; // For displaying the guide created message
@@ -14,6 +14,7 @@ interface Tests {
     IgG2: number | null;
     IgG3: number | null;
     IgG4: number | null;
+    timestamp: any;
 }
 
 interface Guide {
@@ -28,7 +29,6 @@ interface User {
     email: string;
     role: string;
     age: number | null;
-    tests: Tests;
 }
 
 interface AdminDashboardProps {
@@ -38,12 +38,25 @@ interface AdminDashboardProps {
 const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const [users, setUsers] = useState<User[]>([]);
     const [guides, setGuides] = useState<Guide[]>([]);
-    const [editingUser, setEditingUser] = useState<User | null>(null);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [guideModalVisible, setGuideModalVisible] = useState(false);
+    const [modalVisible, setModalVisible] = useState(false); // Modal visibility for Add Test
+    const [editModalVisible, setEditModalVisible] = useState(false); // Modal visibility for Edit Test
+    const [guideModalVisible, setGuideModalVisible] = useState(false); // Modal visibility for Create Guide
     const [guidesModalVisible, setGuidesModalVisible] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [userTests, setUserTests] = useState<{ [userId: string]: Tests[] }>({});
     const [selectedTest, setSelectedTest] = useState<string | null>(null);
     const [guideData, setGuideData] = useState<Guide | null>(null);
+    const [newTest, setNewTest] = useState<Tests>({
+        IgA: null,
+        IgM: null,
+        IgG: null,
+        IgG1: null,
+        IgG2: null,
+        IgG3: null,
+        IgG4: null,
+        timestamp: new Date(),
+    });
+    const [newGuide, setNewGuide] = useState<string>(''); // State for new guide
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -59,15 +72,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                         email: data.email,
                         role: data.role,
                         age: data.age || null,
-                        tests: data.tests || {
-                            IgA: null,
-                            IgM: null,
-                            IgG: null,
-                            IgG1: null,
-                            IgG2: null,
-                            IgG3: null,
-                            IgG4: null,
-                        },
                     };
                 });
                 setUsers(usersList);
@@ -79,97 +83,22 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         fetchUsers();
     }, []);
 
-
-    const addTestForUser = async (user: User) => {
-        // Modal veya form gösterimi için state oluşturun (input alanları)
-        setEditingUser(user);
-        setModalVisible(true);  // Modal'ı açıyoruz
-    };
-
-    const handleTestSave = async () => {
-        if (!editingUser) return;
-    
-        try {
-            // Kullanıcıdan alınan verileri Firestore'a ekliyoruz
-            const userTestsCollectionRef = collection(FIRESTORE_DB, `users/${editingUser.id}/tests`);
-    
-            await addDoc(userTestsCollectionRef, {
-                IgA: editingUser.tests.IgA,
-                IgM: editingUser.tests.IgM,
-                IgG: editingUser.tests.IgG,
-                IgG1: editingUser.tests.IgG1,
-                IgG2: editingUser.tests.IgG2,
-                IgG3: editingUser.tests.IgG3,
-                IgG4: editingUser.tests.IgG4,
-                timestamp: new Date(),
-            });
-    
-            Alert.alert('Success', 'New test entry created successfully.');
-            setModalVisible(false); // Modal'ı kapatıyoruz
-        } catch (error) {
-            console.error('Error adding new test:', error);
-            Alert.alert('Error', 'Failed to create new test. Please try again.');
+    const createGuide = async () => {
+        if (!newGuide.trim()) {
+            Alert.alert('Error', 'Guide content cannot be empty.');
+            return;
         }
-    };
-
-
-
-    const fetchGuides = async () => {
-        try {
-            const guidesSnapshot = await getDocs(collection(FIRESTORE_DB, 'guides'));
-            const guidesList: Guide[] = guidesSnapshot.docs.map((doc) => doc.data() as Guide);
-            setGuides(guidesList);
-            setGuidesModalVisible(true);
-        } catch (error) {
-            console.error('Error fetching guides:', error);
-            Alert.alert('Error', 'Failed to fetch guides. Please try again.');
-        }
-    };
-
-    const handleLogout = async () => {
-        try {
-            await signOut(FIREBASE_AUTH);
-            Alert.alert('Success', 'You have successfully logged out.', [
-                { text: 'OK', onPress: () => navigation.navigate('Login') },
-            ]);
-        } catch (error) {
-            console.error('Logout failed:', error);
-            Alert.alert('Error', 'Failed to log out. Please try again.');
-        }
-    };
-
-    const handleEdit = (user: User) => {
-        setEditingUser(user);
-        setModalVisible(true);
-    };
-
-    const handleSave = async () => {
-        if (!editingUser) return;
 
         try {
-            await updateDoc(doc(FIRESTORE_DB, 'users', editingUser.id), { tests: editingUser.tests });
-            Alert.alert('Success', 'Test values updated successfully.');
-            setModalVisible(false);
+            const guideCollectionRef = collection(FIRESTORE_DB, 'guides');
+            await addDoc(guideCollectionRef, { content: newGuide, timestamp: new Date() });
+            Alert.alert('Success', 'Guide created successfully.');
+            setGuideModalVisible(false); // Close modal after saving
+            setNewGuide(''); // Clear the input
         } catch (error) {
-            console.error('Error updating tests:', error);
-            Alert.alert('Error', 'Failed to update test values. Please try again.');
+            console.error('Error creating guide:', error);
+            Alert.alert('Error', 'Failed to create guide. Please try again.');
         }
-    };
-
-    const handleTestChange = (key: keyof Tests, value: string) => {
-        if (!editingUser) return;
-
-        const updatedTests = {
-            ...editingUser.tests,
-            [key]: value ? parseFloat(value) : 0,
-        };
-
-        setEditingUser({ ...editingUser, tests: updatedTests });
-    };
-
-    const handleCreateGuide = () => {
-        setGuideModalVisible(true);
-        setSelectedTest(null); // Reset test selection when opening the guide creation modal
     };
 
     const handleSelectTest = (test: string) => {
@@ -210,18 +139,82 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             Alert.alert('Error', 'Failed to save guide. Please try again.');
         }
     };
-
+    
     const handleCloseGuideModal = () => {
         setGuideModalVisible(false);
         setSelectedTest(null); // Reset selected test when closing
     };
 
+    const addTestForUser = (user: User) => {
+        setEditingUser(user);
+        setModalVisible(true); // Open modal for adding test
+    };
+
+    const handleTestSave = async () => {
+        if (!editingUser) return;
+
+        try {
+            const userTestsCollectionRef = collection(FIRESTORE_DB, `users/${editingUser.id}/tests`);
+            await addDoc(userTestsCollectionRef, {
+                ...newTest,
+                timestamp: new Date(),
+            });
+            Alert.alert('Success', 'Test entry created successfully.');
+            setModalVisible(false); // Close modal after saving
+        } catch (error) {
+            console.error('Error adding test:', error);
+            Alert.alert('Error', 'Failed to create test. Please try again.');
+        }
+    };
+
+    const fetchTestsForUser = async (user: User) => {
+        try {
+            const testsSnapshot = await getDocs(collection(FIRESTORE_DB, `users/${user.id}/tests`));
+            const testsList: Tests[] = testsSnapshot.docs.map((doc) => doc.data() as Tests);
+            setUserTests((prevState) => ({
+                ...prevState,
+                [user.id]: testsList, // Set tests for the selected user
+            }));
+        } catch (error) {
+            console.error('Error fetching tests:', error);
+        }
+    };
+
+    const fetchGuides = async () => {
+        try {
+            const guidesSnapshot = await getDocs(collection(FIRESTORE_DB, 'guides'));
+            const guidesList: Guide[] = guidesSnapshot.docs.map((doc) => doc.data() as Guide);
+            setGuides(guidesList);
+            setGuidesModalVisible(true);
+        } catch (error) {
+            console.error('Error fetching guides:', error);
+            Alert.alert('Error', 'Failed to fetch guides. Please try again.');
+        }
+    };
+
+    const handleEdit = (user: User) => {
+        setEditingUser(user);
+        setEditModalVisible(true); // Open modal for editing tests
+        fetchTestsForUser(user); // Fetch tests for the selected user
+    };
+
+    const handleLogout = async () => {
+        try {
+            await signOut(FIREBASE_AUTH);
+            Alert.alert('Success', 'Logged out successfully', [{ text: 'OK', onPress: () => navigation.navigate('Login') }]);
+        } catch (error) {
+            console.error('Error logging out:', error);
+            Alert.alert('Error', 'Logout failed.');
+        }
+    };
+
     return (
         <View style={styles.container}>
             <View style={styles.headerButtons}>
-                <Button title="Logout" onPress={handleLogout} color="#d9534f" />
-                <Button title="Create a Guide" onPress={handleCreateGuide} color="#5bc0de" />
                 <Button title="My Guides" onPress={fetchGuides} color="#5cb85c" />
+                <Button title="Create Guide" onPress={() => setGuideModalVisible(true)} color="#5cb85c" />
+                <Button title="Logout" onPress={handleLogout} color="#d9534f" />
+                
             </View>
 
             <FlatList
@@ -240,71 +233,11 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                         </Text>
                         <Button title="Edit Tests" onPress={() => handleEdit(item)} />
                         <View style={styles.addTestButton}>
-                            <Button
-                                title="Add Test"
-                                onPress={() => addTestForUser(item)} // Add test for the user
-                                color="#5cb85c"
-                            />
+                            <Button title="Add Test" onPress={() => addTestForUser(item)} color="#5cb85c" />
                         </View>
                     </View>
                 )}
             />
-
-            {editingUser && (
-                <Modal visible={modalVisible} animationType="slide" transparent={true}>
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Edit Test Values</Text>
-                            {Object.keys(editingUser.tests).map((key) => (
-                                <View key={key} style={styles.inputContainer}>
-                                    <Text>{key}</Text>
-                                    <TextInput
-                                        style={styles.input}
-                                        keyboardType="numeric"
-                                        value={editingUser.tests[key as keyof Tests]?.toString() || ''}
-                                        onChangeText={(value) => handleTestChange(key as keyof Tests, value)}
-                                    />
-                                </View>
-                            ))}
-                            <View style={styles.buttonRow}>
-                                <Button title="Save" onPress={handleSave} />
-                                <Button
-                                    title="Cancel"
-                                    onPress={() => setModalVisible(false)}
-                                    color="#d9534f"
-                                />
-                            </View>
-                        </View>
-                    </View>
-                </Modal>
-            )}
-            {editingUser && (
-    <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Enter Test Values</Text>
-
-                {/* Kullanıcıdan test verileri alınıyor */}
-                {['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'].map((test) => (
-                    <View key={test} style={styles.inputContainer}>
-                        <Text>{test}</Text>
-                        <TextInput
-                            style={styles.input}
-                            keyboardType="numeric"
-                            value={editingUser.tests[test as keyof Tests]?.toString() || ''}
-                            onChangeText={(value) => handleTestChange(test as keyof Tests, value)}
-                        />
-                    </View>
-                ))}
-
-                <View style={styles.buttonRow}>
-                    <Button title="Save" onPress={handleTestSave} />
-                    <Button title="Cancel" onPress={() => setModalVisible(false)} color="#d9534f" />
-                </View>
-            </View>
-        </View>
-    </Modal>
-)}
 
             {guideModalVisible && (
                 <Modal visible={guideModalVisible} animationType="slide" transparent={true}>
@@ -326,6 +259,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                 <>
                                     <Text style={styles.modalTitle}>Guide for {selectedTest}</Text>
                                     {guideData?.ranges.map((range, index) => (
+                                        <ScrollView key={index} style={styles.inputContainer}>
                                         <View key={index} style={styles.inputContainer}>
                                             <Text>{range.ageGroup}</Text>
                                             <TextInput
@@ -343,6 +277,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                 onChangeText={(value) => handleGuideChange(index, 'max', value)}
                                             />
                                         </View>
+                                        </ScrollView>
                                     ))}
                                     <View style={styles.buttonRow}>
                                         <Button title="Save Guide" onPress={saveGuideToDatabase} />
@@ -359,7 +294,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 </Modal>
             )}
 
-            {guidesModalVisible && (
+{guidesModalVisible && (
                 <Modal visible={guidesModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
                         <View style={styles.modalContent}>
@@ -392,6 +327,130 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     </View>
                 </Modal>
             )}
+
+
+
+            {/* Add Test Modal */}
+            <Modal visible={modalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Add Test for {editingUser?.firstName} {editingUser?.lastName}</Text>
+                        
+                        {/* Add ScrollView to make the content scrollable */}
+                        <ScrollView style={styles.scrollViewContainer}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgA"
+                                keyboardType="numeric"
+                                value={newTest.IgA?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgA: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgM"
+                                keyboardType="numeric"
+                                value={newTest.IgM?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgM: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG"
+                                keyboardType="numeric"
+                                value={newTest.IgG?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgG: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG1"
+                                keyboardType="numeric"
+                                value={newTest.IgG1?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgG1: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG2"
+                                keyboardType="numeric"
+                                value={newTest.IgG2?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgG2: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG3"
+                                keyboardType="numeric"
+                                value={newTest.IgG3?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgG3: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG4"
+                                keyboardType="numeric"
+                                value={newTest.IgG4?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgG4: Number(text) })}
+                            />
+                            {/* Add more inputs as needed for IgG1, IgG2, IgG3, IgG4 */}
+                        </ScrollView>
+
+                        <View style={styles.buttonRow}>
+                            <Button title="Save Test" onPress={handleTestSave} color="#5cb85c" />
+                            <Button title="Close" onPress={() => setModalVisible(false)} color="#d9534f" />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Edit Test Modal */}
+            <Modal visible={editModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Edit Tests for {editingUser?.firstName} {editingUser?.lastName}</Text>
+                        
+                        {/* Display the tests for the user in a scrollable list */}
+                        <ScrollView style={styles.scrollViewContainer}>
+                            {editingUser?.id && userTests[editingUser.id]?.map((test: Tests, index: number) => (
+                                <View key={index} style={styles.tableContainer}>
+                                    <View style={styles.tableHeader}>
+                                        <Text style={styles.tableCell}>Test Type</Text>
+                                        <Text style={styles.tableCell}>Value</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgA</Text>
+                                        <Text style={styles.tableCell}>{test.IgA ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgM</Text>
+                                        <Text style={styles.tableCell}>{test.IgM ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG</Text>
+                                        <Text style={styles.tableCell}>{test.IgG ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG1</Text>
+                                        <Text style={styles.tableCell}>{test.IgG1 ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG2</Text>
+                                        <Text style={styles.tableCell}>{test.IgG2 ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG3</Text>
+                                        <Text style={styles.tableCell}>{test.IgG3 ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG4</Text>
+                                        <Text style={styles.tableCell}>{test.IgG4 ?? 'N/A'}</Text>
+                                    </View>
+                                    {/* Repeat similar rows for IgG, IgG1, IgG2, IgG3, IgG4 */}
+                                </View>
+                            ))}
+                        </ScrollView>
+
+                        <View style={styles.buttonRow}>
+                            <Button title="Close" onPress={() => setEditModalVisible(false)} color="#d9534f" />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -436,31 +495,23 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 10,
     },
-    inputContainer: {
-        marginBottom: 10,
-    },
     input: {
-        borderWidth: 1,
+        height: 40,
         borderColor: '#ccc',
-        padding: 5,
-        borderRadius: 5,
-        marginBottom: 5,
+        borderWidth: 1,
+        marginBottom: 10,
+        paddingHorizontal: 10,
+    },
+    scrollViewContainer: {
+        marginBottom: 20,
     },
     buttonRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         marginTop: 20,
     },
-    guideContainer: {
+    tableContainer: {
         marginBottom: 15,
-        padding: 10,
-        backgroundColor: '#f9f9f9',
-        borderRadius: 5,
-    },
-    guideTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginBottom: 5,
     },
     tableHeader: {
         flexDirection: 'row',
@@ -478,10 +529,23 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlign: 'center',
     },
-    // Add all your styles here, including the new addTestButton style
-        addTestButton: {
-            marginTop: 10,
-        },
-    
+    addTestButton: {
+        marginTop: 10,
+    },
+    inputContainer: {
+        marginBottom: 10,
+    },
+    guideContainer: {
+        marginBottom: 15,
+        padding: 10,
+        backgroundColor: '#f9f9f9',
+        borderRadius: 5,
+    },
+    guideTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 5,
+    },
 });
+
 export default AdminDashboard;
