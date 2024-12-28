@@ -17,6 +17,7 @@ interface Tests {
     timestamp: any;
 }
 
+
 interface Guide {
     testType: string;
     ranges: { ageGroup: string; min: number | null; max: number | null }[];
@@ -439,53 +440,52 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Edit Tests for {editingUser?.firstName} {editingUser?.lastName}</Text>
                         
-                                                    <ScrollView style={styles.scrollViewContainer}>
-                                {editingUser?.id &&
-                                    userTests[editingUser.id]
-                                        ?.slice() // Orijinal veriyi değiştirmemek için kopya oluştur.
-                                        .sort((a, b) => {
-                                            const timeA = a.timestamp?.seconds ?? 0; // Geçerli bir timestamp yoksa 0
-                                            const timeB = b.timestamp?.seconds ?? 0;
-                                            return timeA - timeB; // Küçükten büyüğe sıralama
-                                        })
-                                        .map((test: Tests, index: number) => (
-                                            <View key={index} style={styles.tableContainer}>
-                                                <Text style={styles.timestamp}>Timestamp: {formatTimestamp(test.timestamp)}</Text>
-                                                <View style={styles.tableHeader}>
-                                                    <Text style={styles.tableCell}>Test Type</Text>
-                                                    <Text style={styles.tableCell}>Value</Text>
-                                                </View>
-                                                <View style={styles.tableRow}>
-                                                    <Text style={styles.tableCell}>IgA</Text>
-                                                    <Text style={styles.tableCell}>{test.IgA ?? 'N/A'}</Text>
-                                                </View>
-                                                <View style={styles.tableRow}>
-                                                    <Text style={styles.tableCell}>IgM</Text>
-                                                    <Text style={styles.tableCell}>{test.IgM ?? 'N/A'}</Text>
-                                                </View>
-                                                <View style={styles.tableRow}>
-                                                    <Text style={styles.tableCell}>IgG</Text>
-                                                    <Text style={styles.tableCell}>{test.IgG ?? 'N/A'}</Text>
-                                                </View>
-                                                <View style={styles.tableRow}>
-                                                    <Text style={styles.tableCell}>IgG1</Text>
-                                                    <Text style={styles.tableCell}>{test.IgG1 ?? 'N/A'}</Text>
-                                                </View>
-                                                <View style={styles.tableRow}>
-                                                    <Text style={styles.tableCell}>IgG2</Text>
-                                                    <Text style={styles.tableCell}>{test.IgG2 ?? 'N/A'}</Text>
-                                                </View>
-                                                <View style={styles.tableRow}>
-                                                    <Text style={styles.tableCell}>IgG3</Text>
-                                                    <Text style={styles.tableCell}>{test.IgG3 ?? 'N/A'}</Text>
-                                                </View>
-                                                <View style={styles.tableRow}>
-                                                    <Text style={styles.tableCell}>IgG4</Text>
-                                                    <Text style={styles.tableCell}>{test.IgG4 ?? 'N/A'}</Text>
-                                                </View>
-                                            </View>
-                                        ))}
-                            </ScrollView>
+                        <ScrollView style={styles.scrollViewContainer}>
+    {editingUser?.id &&
+        userTests[editingUser.id]
+            ?.slice()
+            .sort((a, b) => {
+                const timeA = a.timestamp?.seconds ?? 0;
+                const timeB = b.timestamp?.seconds ?? 0;
+                return timeA - timeB; // Küçükten büyüğe sıralama
+            })
+            .map((test, index, tests) => {
+                // Bir önceki tahlil
+                const previousTest = index > 0 ? tests[index - 1] : null;
+
+                return (
+                    <View key={index} style={styles.tableContainer}>
+                        <Text style={styles.timestamp}>Timestamp: {formatTimestamp(test.timestamp)}</Text>
+                        <View style={styles.tableHeader}>
+                            <Text style={styles.tableCell}>Test Type</Text>
+                            <Text style={styles.tableCell}>Value</Text>
+                            <Text style={styles.tableCell}>Change</Text>
+                        </View>
+                        {Object.keys(test)
+                            .filter((key) => key !== "timestamp") // timestamp'ı hariç tut
+                            .map((key) => {
+                                const typedKey = key as keyof Tests; // Anahtarı `keyof Tests` olarak işaretle
+                                return (
+                                    <View key={key} style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>{key}</Text>
+                                        <Text style={styles.tableCell}>{test[typedKey] ?? "N/A"}</Text>
+                                        <Text style={styles.tableCell}>
+                                            {previousTest && previousTest[typedKey] != null
+                                                ? test[typedKey]! > previousTest[typedKey]!
+                                                    ? "▲"
+                                                    : test[typedKey]! < previousTest[typedKey]!
+                                                    ? "▼"
+                                                    : "▬"
+                                                : "N/A"}
+                                        </Text>
+                                    </View>
+                                );
+                            })}
+                    </View>
+                );
+            })}
+</ScrollView>
+
 
 
 
