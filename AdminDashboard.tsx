@@ -48,9 +48,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const [guideData, setGuideData] = useState<Guide | null>(null);
     const [filteredUsers, setFilteredUsers] = useState<User[]>([]); // Filtrelenmiş kullanıcılar
     const [searchText, setSearchText] = useState<string>(''); // Arama metni
-
-
-
+    
 
     const [newTest, setNewTest] = useState<Tests>({
         IgA: null,
@@ -441,49 +439,57 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Edit Tests for {editingUser?.firstName} {editingUser?.lastName}</Text>
                         
-                        {/* Display the tests for the user in a scrollable list */}
-                        <ScrollView style={styles.scrollViewContainer}>
-                            {editingUser?.id && userTests[editingUser.id]?.map((test: Tests, index: number) => (
-                                <View key={index} style={styles.tableContainer}>
-                                    <Text style={styles.timestamp}>Timestamp: 
-                                        {formatTimestamp(test.timestamp)}
-                                    </Text>
-                                    <View style={styles.tableHeader}>
-                                        <Text style={styles.tableCell}>Test Type</Text>
-                                        <Text style={styles.tableCell}>Value</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgA</Text>
-                                        <Text style={styles.tableCell}>{test.IgA ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgM</Text>
-                                        <Text style={styles.tableCell}>{test.IgM ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG</Text>
-                                        <Text style={styles.tableCell}>{test.IgG ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG1</Text>
-                                        <Text style={styles.tableCell}>{test.IgG1 ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG2</Text>
-                                        <Text style={styles.tableCell}>{test.IgG2 ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG3</Text>
-                                        <Text style={styles.tableCell}>{test.IgG3 ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG4</Text>
-                                        <Text style={styles.tableCell}>{test.IgG4 ?? 'N/A'}</Text>
-                                    </View>
-                                    {/* Repeat similar rows for IgG, IgG1, IgG2, IgG3, IgG4 */}
-                                </View>
-                            ))}
-                        </ScrollView>
+                                                    <ScrollView style={styles.scrollViewContainer}>
+                                {editingUser?.id &&
+                                    userTests[editingUser.id]
+                                        ?.slice() // Orijinal veriyi değiştirmemek için kopya oluştur.
+                                        .sort((a, b) => {
+                                            const timeA = a.timestamp?.seconds ?? 0; // Geçerli bir timestamp yoksa 0
+                                            const timeB = b.timestamp?.seconds ?? 0;
+                                            return timeA - timeB; // Küçükten büyüğe sıralama
+                                        })
+                                        .map((test: Tests, index: number) => (
+                                            <View key={index} style={styles.tableContainer}>
+                                                <Text style={styles.timestamp}>Timestamp: {formatTimestamp(test.timestamp)}</Text>
+                                                <View style={styles.tableHeader}>
+                                                    <Text style={styles.tableCell}>Test Type</Text>
+                                                    <Text style={styles.tableCell}>Value</Text>
+                                                </View>
+                                                <View style={styles.tableRow}>
+                                                    <Text style={styles.tableCell}>IgA</Text>
+                                                    <Text style={styles.tableCell}>{test.IgA ?? 'N/A'}</Text>
+                                                </View>
+                                                <View style={styles.tableRow}>
+                                                    <Text style={styles.tableCell}>IgM</Text>
+                                                    <Text style={styles.tableCell}>{test.IgM ?? 'N/A'}</Text>
+                                                </View>
+                                                <View style={styles.tableRow}>
+                                                    <Text style={styles.tableCell}>IgG</Text>
+                                                    <Text style={styles.tableCell}>{test.IgG ?? 'N/A'}</Text>
+                                                </View>
+                                                <View style={styles.tableRow}>
+                                                    <Text style={styles.tableCell}>IgG1</Text>
+                                                    <Text style={styles.tableCell}>{test.IgG1 ?? 'N/A'}</Text>
+                                                </View>
+                                                <View style={styles.tableRow}>
+                                                    <Text style={styles.tableCell}>IgG2</Text>
+                                                    <Text style={styles.tableCell}>{test.IgG2 ?? 'N/A'}</Text>
+                                                </View>
+                                                <View style={styles.tableRow}>
+                                                    <Text style={styles.tableCell}>IgG3</Text>
+                                                    <Text style={styles.tableCell}>{test.IgG3 ?? 'N/A'}</Text>
+                                                </View>
+                                                <View style={styles.tableRow}>
+                                                    <Text style={styles.tableCell}>IgG4</Text>
+                                                    <Text style={styles.tableCell}>{test.IgG4 ?? 'N/A'}</Text>
+                                                </View>
+                                            </View>
+                                        ))}
+                            </ScrollView>
+
+
+
+
 
                         <View style={styles.buttonRow}>
                             <Button title="Close" onPress={() => setEditModalVisible(false)} color="#d9534f" />
