@@ -179,6 +179,34 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                 value={newTest.IgG?.toString()}
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG: Number(text) })}
                             />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG1"
+                                keyboardType="numeric"
+                                value={newTest.IgG1?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgG1: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG2"
+                                keyboardType="numeric"
+                                value={newTest.IgG2?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgG2: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG3"
+                                keyboardType="numeric"
+                                value={newTest.IgG3?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgG3: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG4"
+                                keyboardType="numeric"
+                                value={newTest.IgG4?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgG4: Number(text) })}
+                            />
                             {/* Add more inputs as needed for IgG1, IgG2, IgG3, IgG4 */}
                         </ScrollView>
 
@@ -211,6 +239,26 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                     <View style={styles.tableRow}>
                                         <Text style={styles.tableCell}>IgM</Text>
                                         <Text style={styles.tableCell}>{test.IgM ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG</Text>
+                                        <Text style={styles.tableCell}>{test.IgG ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG1</Text>
+                                        <Text style={styles.tableCell}>{test.IgG1 ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG2</Text>
+                                        <Text style={styles.tableCell}>{test.IgG2 ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG3</Text>
+                                        <Text style={styles.tableCell}>{test.IgG3 ?? 'N/A'}</Text>
+                                    </View>
+                                    <View style={styles.tableRow}>
+                                        <Text style={styles.tableCell}>IgG4</Text>
+                                        <Text style={styles.tableCell}>{test.IgG4 ?? 'N/A'}</Text>
                                     </View>
                                     {/* Repeat similar rows for IgG, IgG1, IgG2, IgG3, IgG4 */}
                                 </View>
