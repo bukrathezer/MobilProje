@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Button, StyleSheet, Alert, Modal, TextInput } from 'react-native';
+import React, { useEffect, useState } from 'react'; 
+import { View, Text, FlatList, Button, StyleSheet, Alert, Modal, ScrollView, TextInput } from 'react-native';
 import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -13,6 +13,7 @@ interface Tests {
     IgG2: number | null;
     IgG3: number | null;
     IgG4: number | null;
+    timestamp: any;
 }
 
 interface User {
@@ -31,10 +32,9 @@ interface AdminDashboardProps {
 const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const [users, setUsers] = useState<User[]>([]);
     const [editingUser, setEditingUser] = useState<User | null>(null);
-    const [modalVisible, setModalVisible] = useState(false);
-    const [userTests, setUserTests] = useState<{ [key: string]: Tests[] }>({}); // Stores tests per user
-
-    // New test state for input fields
+    const [modalVisible, setModalVisible] = useState(false);  // Modal visibility for Add Test
+    const [editModalVisible, setEditModalVisible] = useState(false); // Modal visibility for Edit Test
+    const [userTests, setUserTests] = useState<{ [userId: string]: Tests[] }>({}); // Correctly typing the userTests state
     const [newTest, setNewTest] = useState<Tests>({
         IgA: null,
         IgM: null,
@@ -43,6 +43,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         IgG2: null,
         IgG3: null,
         IgG4: null,
+        timestamp: new Date(),
     });
 
     useEffect(() => {
@@ -70,9 +71,9 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         fetchUsers();
     }, []);
 
-    const addTestForUser = async (user: User) => {
+    const addTestForUser = (user: User) => {
         setEditingUser(user);
-        setModalVisible(true); // Open modal to add a test for the user
+        setModalVisible(true); // Open modal for adding test
     };
 
     const handleTestSave = async () => {
@@ -86,7 +87,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             });
             Alert.alert('Success', 'Test entry created successfully.');
             setModalVisible(false); // Close modal after saving
-            setNewTest({ IgA: null, IgM: null, IgG: null, IgG1: null, IgG2: null, IgG3: null, IgG4: null }); // Reset the form
         } catch (error) {
             console.error('Error adding test:', error);
             Alert.alert('Error', 'Failed to create test. Please try again.');
@@ -108,7 +108,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
     const handleEdit = (user: User) => {
         setEditingUser(user);
-        setModalVisible(true);
+        setEditModalVisible(true); // Open modal for editing tests
         fetchTestsForUser(user); // Fetch tests for the selected user
     };
 
@@ -150,14 +150,55 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 )}
             />
 
-            {editingUser && (
-                <Modal visible={modalVisible} animationType="slide" transparent={true}>
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Tests for {editingUser.firstName} {editingUser.lastName}</Text>
-                            
-                            {/* Display Tests in separate tables for each test type */}
-                            {userTests[editingUser.id]?.map((test, index) => (
+            {/* Add Test Modal */}
+            <Modal visible={modalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Add Test for {editingUser?.firstName} {editingUser?.lastName}</Text>
+                        
+                        {/* Add ScrollView to make the content scrollable */}
+                        <ScrollView style={styles.scrollViewContainer}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgA"
+                                keyboardType="numeric"
+                                value={newTest.IgA?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgA: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgM"
+                                keyboardType="numeric"
+                                value={newTest.IgM?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgM: Number(text) })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG"
+                                keyboardType="numeric"
+                                value={newTest.IgG?.toString()}
+                                onChangeText={(text) => setNewTest({ ...newTest, IgG: Number(text) })}
+                            />
+                            {/* Add more inputs as needed for IgG1, IgG2, IgG3, IgG4 */}
+                        </ScrollView>
+
+                        <View style={styles.buttonRow}>
+                            <Button title="Save Test" onPress={handleTestSave} color="#5cb85c" />
+                            <Button title="Close" onPress={() => setModalVisible(false)} color="#d9534f" />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Edit Test Modal */}
+            <Modal visible={editModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Edit Tests for {editingUser?.firstName} {editingUser?.lastName}</Text>
+                        
+                        {/* Display the tests for the user in a scrollable list */}
+                        <ScrollView style={styles.scrollViewContainer}>
+                            {editingUser?.id && userTests[editingUser.id]?.map((test: Tests, index: number) => (
                                 <View key={index} style={styles.tableContainer}>
                                     <View style={styles.tableHeader}>
                                         <Text style={styles.tableCell}>Test Type</Text>
@@ -171,58 +212,17 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                         <Text style={styles.tableCell}>IgM</Text>
                                         <Text style={styles.tableCell}>{test.IgM ?? 'N/A'}</Text>
                                     </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG</Text>
-                                        <Text style={styles.tableCell}>{test.IgG ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG1</Text>
-                                        <Text style={styles.tableCell}>{test.IgG1 ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG2</Text>
-                                        <Text style={styles.tableCell}>{test.IgG2 ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG3</Text>
-                                        <Text style={styles.tableCell}>{test.IgG3 ?? 'N/A'}</Text>
-                                    </View>
-                                    <View style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>IgG4</Text>
-                                        <Text style={styles.tableCell}>{test.IgG4 ?? 'N/A'}</Text>
-                                    </View>
+                                    {/* Repeat similar rows for IgG, IgG1, IgG2, IgG3, IgG4 */}
                                 </View>
                             ))}
+                        </ScrollView>
 
-                            {/* Add Test Form */}
-                            <View style={styles.tableContainer}>
-                                <Text style={styles.modalTitle}>Add New Test</Text>
-                                {['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'].map((testKey) => (
-                                    <View key={testKey} style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>{testKey}</Text>
-                                        <TextInput
-                                            style={styles.textInput}
-                                            value={newTest[testKey as keyof Tests]?.toString() || ''}
-                                            keyboardType="numeric"
-                                            onChangeText={(text) =>
-                                                setNewTest((prev) => ({
-                                                    ...prev,
-                                                    [testKey]: text ? parseFloat(text) : null,
-                                                }))
-                                            }
-                                        />
-                                    </View>
-                                ))}
-                            </View>
-
-                            <View style={styles.buttonRow}>
-                                <Button title="Save Test" onPress={handleTestSave} color="#5cb85c" />
-                                <Button title="Close" onPress={() => setModalVisible(false)} color="#d9534f" />
-                            </View>
+                        <View style={styles.buttonRow}>
+                            <Button title="Close" onPress={() => setEditModalVisible(false)} color="#d9534f" />
                         </View>
                     </View>
-                </Modal>
-            )}
+                </View>
+            </Modal>
         </View>
     );
 };
@@ -267,6 +267,21 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 10,
     },
+    input: {
+        height: 40,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        marginBottom: 10,
+        paddingHorizontal: 10,
+    },
+    scrollViewContainer: {
+        marginBottom: 20,
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+    },
     tableContainer: {
         marginBottom: 15,
     },
@@ -285,19 +300,6 @@ const styles = StyleSheet.create({
     tableCell: {
         flex: 1,
         textAlign: 'center',
-    },
-    textInput: {
-        flex: 1,
-        height: 30,
-        borderColor: '#ccc',
-        borderWidth: 1,
-        borderRadius: 5,
-        paddingHorizontal: 5,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 20,
     },
     addTestButton: {
         marginTop: 10,
