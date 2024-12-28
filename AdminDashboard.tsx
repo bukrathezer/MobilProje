@@ -46,6 +46,12 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const [userTests, setUserTests] = useState<{ [userId: string]: Tests[] }>({});
     const [selectedTest, setSelectedTest] = useState<string | null>(null);
     const [guideData, setGuideData] = useState<Guide | null>(null);
+    const [filteredUsers, setFilteredUsers] = useState<User[]>([]); // Filtrelenmiş kullanıcılar
+    const [searchText, setSearchText] = useState<string>(''); // Arama metni
+
+
+
+
     const [newTest, setNewTest] = useState<Tests>({
         IgA: null,
         IgM: null,
@@ -75,6 +81,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     };
                 });
                 setUsers(usersList);
+                setFilteredUsers(usersList); // Başlangıçta tüm kullanıcıları göster
             } catch (error) {
                 console.error('Error fetching users:', error);
             }
@@ -82,6 +89,24 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
         fetchUsers();
     }, []);
+
+
+    const handleSearch = (text: string) => {
+        setSearchText(text);
+        if (text.trim() === '') {
+            setFilteredUsers(users); // Arama metni boşsa tüm kullanıcıları göster
+        } else {
+            const lowercasedText = text.toLowerCase();
+            const filtered = users.filter(
+                (user) =>
+                    user.firstName.toLowerCase().includes(lowercasedText) ||
+                    user.lastName.toLowerCase().includes(lowercasedText)
+            );
+            setFilteredUsers(filtered);
+        }
+    };
+
+
 
     const createGuide = async () => {
         if (!newGuide.trim()) {
@@ -219,12 +244,18 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             <View style={styles.headerButtons}>
                 <Button title="My Guides" onPress={fetchGuides} color="#5cb85c" />
                 <Button title="Create Guide" onPress={() => setGuideModalVisible(true)} color="#5cb85c" />
+                <TextInput
+                style={styles.searchBar}
+                placeholder="Search by Name or Surname"
+                value={searchText}
+                onChangeText={handleSearch}
+            />
                 <Button title="Logout" onPress={handleLogout} color="#d9534f" />
-                
+               
             </View>
 
             <FlatList
-                data={users}
+                data={filteredUsers}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
                     <View style={styles.userCard}>
@@ -555,6 +586,14 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 5,
     
+    },
+    searchBar: {
+        height: 40,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        borderRadius: 5,
+        marginBottom: 10,
+        paddingHorizontal: 10,
     },
     timestamp: { marginBottom: 8, fontWeight: 'bold' },
 });
