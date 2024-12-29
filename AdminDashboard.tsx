@@ -17,7 +17,6 @@ interface Tests {
     timestamp: any;
 }
 
-
 interface Guide {
     testType: string;
     ranges: { ageGroup: string; min: number | null; max: number | null }[];
@@ -102,26 +101,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     user.lastName.toLowerCase().includes(lowercasedText)
             );
             setFilteredUsers(filtered);
-        }
-    };
-
-
-
-    const createGuide = async () => {
-        if (!newGuide.trim()) {
-            Alert.alert('Error', 'Guide content cannot be empty.');
-            return;
-        }
-
-        try {
-            const guideCollectionRef = collection(FIRESTORE_DB, 'guides');
-            await addDoc(guideCollectionRef, { content: newGuide, timestamp: new Date() });
-            Alert.alert('Success', 'Guide created successfully.');
-            setGuideModalVisible(false); // Close modal after saving
-            setNewGuide(''); // Clear the input
-        } catch (error) {
-            console.error('Error creating guide:', error);
-            Alert.alert('Error', 'Failed to create guide. Please try again.');
         }
     };
 
@@ -464,7 +443,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                         {Object.keys(test)
                             .filter((key) => key !== "timestamp") // timestamp'ı hariç tut
                             .map((key) => {
-                                const typedKey = key as keyof Tests; // Anahtarı `keyof Tests` olarak işaretle
+                                const typedKey = key as keyof Tests; // Anahtarı keyof Tests olarak işaretle
                                 return (
                                     <View key={key} style={styles.tableRow}>
                                         <Text style={styles.tableCell}>{key}</Text>
@@ -485,7 +464,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 );
             })}
 </ScrollView>
-
 
 
 
