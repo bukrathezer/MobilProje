@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'; 
+import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, Button, StyleSheet, Alert, Modal, ScrollView, TextInput } from 'react-native';
 import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
@@ -48,7 +48,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const [guideData, setGuideData] = useState<Guide | null>(null);
     const [filteredUsers, setFilteredUsers] = useState<User[]>([]); // Filtrelenmiş kullanıcılar
     const [searchText, setSearchText] = useState<string>(''); // Arama metni
-    
+
 
     const [newTest, setNewTest] = useState<Tests>({
         IgA: null,
@@ -60,7 +60,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         IgG4: null,
         timestamp: new Date(),
     });
-    const [newGuide, setNewGuide] = useState<string>(''); // State for new guide
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -108,15 +107,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         setSelectedTest(test);
         setGuideData({
             testType: test,
-            ranges: [
-                { ageGroup: '25-36 months', min: null, max: null },
-                { ageGroup: '3-5 years', min: null, max: null },
-                { ageGroup: '6-8 years', min: null, max: null },
-                { ageGroup: '9-11 years', min: null, max: null },
-                { ageGroup: '12-16 years', min: null, max: null },
-                { ageGroup: '16-18 years', min: null, max: null },
-                { ageGroup: 'Total', min: null, max: null },
-            ],
+            ranges: [],
         });
     };
 
@@ -127,6 +118,23 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         updatedRanges[index][key] = value ? parseFloat(value) : null;
 
         setGuideData({ ...guideData, ranges: updatedRanges });
+    };
+
+    const handleAgeGroupChange = (index: number, value: string) => {
+        if (!guideData) return;
+
+        const updatedRanges = [...guideData.ranges];
+        updatedRanges[index].ageGroup = value;
+
+        setGuideData({ ...guideData, ranges: updatedRanges });
+    };
+
+
+    const addAgeGroup = () => {
+        if (!guideData) return;
+
+        const newRanges = [...guideData.ranges, { ageGroup: '', min: null, max: null }];
+        setGuideData({ ...guideData, ranges: newRanges });
     };
 
     const saveGuideToDatabase = async () => {
@@ -142,7 +150,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             Alert.alert('Error', 'Failed to save guide. Please try again.');
         }
     };
-    
+
     const handleCloseGuideModal = () => {
         setGuideModalVisible(false);
         setSelectedTest(null); // Reset selected test when closing
@@ -223,13 +231,13 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 <Button title="My Guides" onPress={fetchGuides} color="#5cb85c" />
                 <Button title="Create Guide" onPress={() => setGuideModalVisible(true)} color="#5cb85c" />
                 <TextInput
-                style={styles.searchBar}
-                placeholder="Search by Name or Surname"
-                value={searchText}
-                onChangeText={handleSearch}
-            />
+                    style={styles.searchBar}
+                    placeholder="Search by Name or Surname"
+                    value={searchText}
+                    onChangeText={handleSearch}
+                />
                 <Button title="Logout" onPress={handleLogout} color="#d9534f" />
-               
+
             </View>
 
             <FlatList
@@ -275,8 +283,13 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                     <Text style={styles.modalTitle}>Guide for {selectedTest}</Text>
                                     {guideData?.ranges.map((range, index) => (
                                         <ScrollView key={index} style={styles.inputContainer}>
-                                        <View key={index} style={styles.inputContainer}>
-                                            <Text>{range.ageGroup}</Text>
+                                            <View key={index} style={styles.inputContainer}>
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="Age Group"
+                                                value={range.ageGroup}
+                                                onChangeText={(value) => handleAgeGroupChange(index, value)}
+                                            />
                                             <TextInput
                                                 style={styles.input}
                                                 placeholder="Min"
@@ -291,14 +304,15 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                 value={range.max?.toString() || ''}
                                                 onChangeText={(value) => handleGuideChange(index, 'max', value)}
                                             />
-                                        </View>
+                                            </View>
                                         </ScrollView>
                                     ))}
+                                    <Button title="Add Age Group" onPress={addAgeGroup} />
                                     <View style={styles.buttonRow}>
                                         <Button title="Save Guide" onPress={saveGuideToDatabase} />
                                         <Button
                                             title="Cancel"
-                                            onPress={handleCloseGuideModal}
+                                            onPress={() => setGuideModalVisible(false)}
                                             color="#d9534f"
                                         />
                                     </View>
@@ -309,7 +323,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 </Modal>
             )}
 
-{guidesModalVisible && (
+            {guidesModalVisible && (
                 <Modal visible={guidesModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
                         <View style={styles.modalContent}>
@@ -342,15 +356,13 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     </View>
                 </Modal>
             )}
-
-
-
+            
             {/* Add Test Modal */}
             <Modal visible={modalVisible} animationType="slide" transparent={true}>
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Add Test for {editingUser?.firstName} {editingUser?.lastName}</Text>
-                        
+
                         {/* Add ScrollView to make the content scrollable */}
                         <ScrollView style={styles.scrollViewContainer}>
                             <TextInput
@@ -418,57 +430,52 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Edit Tests for {editingUser?.firstName} {editingUser?.lastName}</Text>
-                        
+
                         <ScrollView style={styles.scrollViewContainer}>
-    {editingUser?.id &&
-        userTests[editingUser.id]
-            ?.slice()
-            .sort((a, b) => {
-                const timeA = a.timestamp?.seconds ?? 0;
-                const timeB = b.timestamp?.seconds ?? 0;
-                return timeA - timeB; // Küçükten büyüğe sıralama
-            })
-            .map((test, index, tests) => {
-                // Bir önceki tahlil
-                const previousTest = index > 0 ? tests[index - 1] : null;
+                            {editingUser?.id &&
+                                userTests[editingUser.id]
+                                    ?.slice()
+                                    .sort((a, b) => {
+                                        const timeA = a.timestamp?.seconds ?? 0;
+                                        const timeB = b.timestamp?.seconds ?? 0;
+                                        return timeA - timeB; // Küçükten büyüğe sıralama
+                                    })
+                                    .map((test, index, tests) => {
+                                        // Bir önceki tahlil
+                                        const previousTest = index > 0 ? tests[index - 1] : null;
 
-                return (
-                    <View key={index} style={styles.tableContainer}>
-                        <Text style={styles.timestamp}>Timestamp: {formatTimestamp(test.timestamp)}</Text>
-                        <View style={styles.tableHeader}>
-                            <Text style={styles.tableCell}>Test Type</Text>
-                            <Text style={styles.tableCell}>Value</Text>
-                            <Text style={styles.tableCell}>Change</Text>
-                        </View>
-                        {Object.keys(test)
-                            .filter((key) => key !== "timestamp") // timestamp'ı hariç tut
-                            .map((key) => {
-                                const typedKey = key as keyof Tests; // Anahtarı keyof Tests olarak işaretle
-                                return (
-                                    <View key={key} style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>{key}</Text>
-                                        <Text style={styles.tableCell}>{test[typedKey] ?? "N/A"}</Text>
-                                        <Text style={styles.tableCell}>
-                                            {previousTest && previousTest[typedKey] != null
-                                                ? test[typedKey]! > previousTest[typedKey]!
-                                                    ? "▲"
-                                                    : test[typedKey]! < previousTest[typedKey]!
-                                                    ? "▼"
-                                                    : "▬"
-                                                : "N/A"}
-                                        </Text>
-                                    </View>
-                                );
-                            })}
-                    </View>
-                );
-            })}
-</ScrollView>
-
-
-
-
-
+                                        return (
+                                            <View key={index} style={styles.tableContainer}>
+                                                <Text style={styles.timestamp}>Timestamp: {formatTimestamp(test.timestamp)}</Text>
+                                                <View style={styles.tableHeader}>
+                                                    <Text style={styles.tableCell}>Test Type</Text>
+                                                    <Text style={styles.tableCell}>Value</Text>
+                                                    <Text style={styles.tableCell}>Change</Text>
+                                                </View>
+                                                {Object.keys(test)
+                                                    .filter((key) => key !== "timestamp") // timestamp'ı hariç tut
+                                                    .map((key) => {
+                                                        const typedKey = key as keyof Tests; // Anahtarı keyof Tests olarak işaretle
+                                                        return (
+                                                            <View key={key} style={styles.tableRow}>
+                                                                <Text style={styles.tableCell}>{key}</Text>
+                                                                <Text style={styles.tableCell}>{test[typedKey] ?? "N/A"}</Text>
+                                                                <Text style={styles.tableCell}>
+                                                                    {previousTest && previousTest[typedKey] != null
+                                                                        ? test[typedKey]! > previousTest[typedKey]!
+                                                                            ? "▲"
+                                                                            : test[typedKey]! < previousTest[typedKey]!
+                                                                                ? "▼"
+                                                                                : "▬"
+                                                                        : "N/A"}
+                                                                </Text>
+                                                            </View>
+                                                        );
+                                                    })}
+                                            </View>
+                                        );
+                                    })}
+                        </ScrollView>
                         <View style={styles.buttonRow}>
                             <Button title="Close" onPress={() => setEditModalVisible(false)} color="#d9534f" />
                         </View>
@@ -569,7 +576,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         marginBottom: 5,
-    
+
     },
     searchBar: {
         height: 40,
