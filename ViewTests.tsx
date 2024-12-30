@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, FlatList, TextInput, Alert, Modal, ScrollView } from 'react-native';
+import React, { useState, useEffect,useCallback  } from 'react';
+import { View, Text, Button, StyleSheet, FlatList, TextInput, Alert, Modal, ScrollView,ActivityIndicator  } from 'react-native';
 import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { doc, getDoc, updateDoc, getDocs, collection, Timestamp } from 'firebase/firestore';
 import { signOut, updatePassword } from 'firebase/auth';
@@ -14,6 +14,17 @@ interface Tests {
     IgG4?: number | null;
     IgM?: number | null;
 }
+interface Guide {
+    testType: string;
+    ranges: Range[];
+}
+interface Range {
+    ageGroup: string;
+    ageMin: number | null;
+    ageMax: number | null;
+    min: number | null;
+    max: number | null;
+}
 
 interface ViewTestsProps {
     userId: string;
@@ -24,24 +35,27 @@ interface ViewTestsProps {
 const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
     const [tests, setTests] = useState<Tests[]>([]);
     const [loading, setLoading] = useState(true);
+    const [guides, setGuides] = useState<Guide[]>([]);
+    const [loadingGuides, setLoadingGuides] = useState(true);
+    const [showUserInfo, setShowUserInfo] = useState(false);
+    const [showAnalyses, setShowAnalyses] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [userInfo, setUserInfo] = useState({
         email: '',
-        age: null as number | null,
+        ageInMonths: null as number | null,
         firstName: '',
         lastName: '',
     });
 
-    const [showUserInfo, setShowUserInfo] = useState(false);
-    const [showAnalyses, setShowAnalyses] = useState(false);
 
     const handleSignOut = async () => {
         try {
             await signOut(FIREBASE_AUTH);
-            alert('Çıkış yapıldı.');
+            Alert.alert('Success', 'Çıkış yapıldı.');
         } catch (error) {
             console.error('Error signing out:', error);
+            Alert.alert('Error', 'Çıkış yapılamadı. Lütfen tekrar deneyin.');
         }
     };
 
@@ -74,7 +88,7 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                 firstName: userInfo.firstName,
                 lastName: userInfo.lastName,
                 email: userInfo.email,
-                age: userInfo.age,
+                ageInMonths: userInfo.ageInMonths,
             });
             Alert.alert('Success', 'Your information has been updated.');
         } catch (error) {
@@ -92,7 +106,7 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                     firstName: data.firstName || '',
                     lastName: data.lastName || '',
                     email: data.email || '',
-                    age: data.age || '' ,
+                    ageInMonths: data.ageInMonths || null ,
                 });
             }
         } catch (error) {
@@ -104,30 +118,65 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
 
     
 
-const fetchTestsForUser = async () => {
-    try {
-        const testsSnapshot = await getDocs(collection(FIRESTORE_DB, `users/${userId}/tests`));
-        const testsList: Tests[] = testsSnapshot.docs.map((doc) => {
-            const data = doc.data();
-            if (data.timestamp && data.timestamp instanceof Timestamp) {
-                data.timestamp = data.timestamp.toDate().getTime(); // Timestamp'i milisaniye dönüştür
-            }
-            return data as Tests;
-        });
-        setTests(testsList);
-    } catch (error) {
-        console.error('Error fetching tests:', error);
-        Alert.alert('Error', 'Veri çekme sırasında bir hata oluştu.');
-    }
-};
+    const fetchTestsForUser = async () => {
+        try {
+            const testsSnapshot = await getDocs(collection(FIRESTORE_DB, `users/${userId}/tests`));
+            const testsList: Tests[] = testsSnapshot.docs.map((doc) => {
+                const data = doc.data();
+                if (data.timestamp && data.timestamp instanceof Timestamp) {
+                    data.timestamp = data.timestamp.toDate().getTime(); // Convert Timestamp to milliseconds
+                }
+                return data as Tests;
+            });
+            setTests(testsList);
+        } catch (error) {
+            console.error('Error fetching tests:', error);
+            Alert.alert('Error', 'Veri çekme sırasında bir hata oluştu.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const formatTimestamp = (timestamp: number) => {
         const date = new Date(timestamp);
         return date.toLocaleString();
     };
 
+    // Fetch Guides
+    const fetchGuides = async () => {
+        try {
+            const guidesSnapshot = await getDocs(collection(FIRESTORE_DB, 'guides'));
+            const guidesList: Guide[] = guidesSnapshot.docs.map((doc) => doc.data() as Guide);
+            setGuides(guidesList);
+        } catch (error) {
+            console.error('Error fetching guides:', error);
+            Alert.alert('Error', 'Guides verilerini çekerken hata oluştu.');
+        } finally {
+            setLoadingGuides(false);
+        }
+    };
+
+    const getGuideForTestAndAge = (guides: Guide[], testType: string, age: number): Range | null => {
+        const guide = guides.find(g => g.testType === testType);
+        if (!guide) return null;
+
+        const range = guide.ranges.find(r => (r.ageMin || 0) <= age && age <= (r.ageMax || Infinity));
+        return range || null;
+    };
+    const getStatus = (value: number, min: number | null, max: number | null): { symbol: string, color: string } => {
+        if (min !== null && value < min) {
+            return { symbol: '↓', color: 'red' };
+        } else if (max !== null && value > max) {
+            return { symbol: '↑', color: 'orange' };
+        } else {
+            return { symbol: '↔', color: 'green' };
+        }
+    };
+
     useEffect(() => {
         fetchUserData();
+        fetchTestsForUser();
+        fetchGuides();
     }, []);
 
     if (loading) {
@@ -165,27 +214,33 @@ const fetchTestsForUser = async () => {
                         placeholder="First Name"
                         value={userInfo.firstName}
                         onChangeText={(text) => setUserInfo({ ...userInfo, firstName: text })}
+                        accessibilityLabel="First Name Input"
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Last Name"
                         value={userInfo.lastName}
                         onChangeText={(text) => setUserInfo({ ...userInfo, lastName: text })}
+                        accessibilityLabel="Last Name Input"
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Email"
                         value={userInfo.email}
                         onChangeText={(text) => setUserInfo({ ...userInfo, email: text })}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        accessibilityLabel="Email Input"
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder="Age"
-                        value={userInfo.age ? userInfo.age.toString() : ''}
+                        placeholder="Age in Months"
+                        value={userInfo.ageInMonths !== null ? userInfo.ageInMonths.toString() : ''}
                         onChangeText={(text) =>
-                            setUserInfo({ ...userInfo, age: text ? parseInt(text) : null })
+                            setUserInfo({ ...userInfo, ageInMonths: text ? parseInt(text) : null })
                         }
                         keyboardType="numeric"
+                        accessibilityLabel="Age in Months Input"
                     />
                     <Button title="Save Changes" onPress={handleSaveUserInfo} />
                     <TextInput
@@ -212,11 +267,11 @@ const fetchTestsForUser = async () => {
                 onPress={() => {
                     setShowAnalyses(true);
                     setShowUserInfo(false);
-                    fetchTestsForUser();
+                    //fetchTestsForUser();
                 }}
             />
 
-            {showAnalyses && (
+{showAnalyses && (
                 <Modal visible={showAnalyses} animationType="slide">
                     <ScrollView style={styles.scrollViewContainer}>
                         <Button
@@ -224,24 +279,52 @@ const fetchTestsForUser = async () => {
                             onPress={() => setShowAnalyses(false)}
                             color="red"
                         />
-                        {tests.map((test, index) => (
-                            <View key={index} style={styles.tableContainer}>
-                                <Text style={styles.timestamp}>
-                                    Timestamp: {formatTimestamp(test.timestamp)}
-                                </Text>
-                                <View style={styles.tableHeader}>
-                                    <Text style={styles.tableCell}>Test Type</Text>
-                                    <Text style={styles.tableCell}>Value</Text>
-                                </View>
-                                <View style={styles.tableRow}><Text style={styles.tableCell}>IgA</Text><Text style={styles.tableCell}>{test.IgA ?? 'N/A'}</Text></View>
-                                <View style={styles.tableRow}><Text style={styles.tableCell}>IgG</Text><Text style={styles.tableCell}>{test.IgG ?? 'N/A'}</Text></View>
-                                <View style={styles.tableRow}><Text style={styles.tableCell}>IgG1</Text><Text style={styles.tableCell}>{test.IgG1 ?? 'N/A'}</Text></View>
-                                <View style={styles.tableRow}><Text style={styles.tableCell}>IgG2</Text><Text style={styles.tableCell}>{test.IgG2 ?? 'N/A'}</Text></View>
-                                <View style={styles.tableRow}><Text style={styles.tableCell}>IgG3</Text><Text style={styles.tableCell}>{test.IgG3 ?? 'N/A'}</Text></View>
-                                <View style={styles.tableRow}><Text style={styles.tableCell}>IgG4</Text><Text style={styles.tableCell}>{test.IgG4 ?? 'N/A'}</Text></View>
-                                <View style={styles.tableRow}><Text style={styles.tableCell}>IgM</Text><Text style={styles.tableCell}>{test.IgM ?? 'N/A'}</Text></View>
-                            </View>
-                        ))}
+                        {tests.map((test, index) => {
+                            const userAge = userInfo.ageInMonths || 0;
+                            const testTypes = ['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'];
+
+                            return testTypes.map((testType) => {
+                                const range = getGuideForTestAndAge(guides, testType, userAge);
+                                const testValue = test[testType as keyof Tests] || 0;
+
+                                if (!range) {
+                                    return (
+                                        <View key={`${index}-${testType}`} style={styles.tableContainer}>
+                                            <Text style={styles.timestamp}>
+                                                Timestamp: {formatTimestamp(test.timestamp)}
+                                            </Text>
+                                            <Text>Guide bulunamadı.</Text>
+                                        </View>
+                                    );
+                                }
+
+                                const { symbol, color } = getStatus(testValue, range.min, range.max);
+
+                                return (
+                                    <View key={`${index}-${testType}`} style={styles.tableContainer}>
+                                        <Text style={styles.timestamp}>
+                                            Timestamp: {formatTimestamp(test.timestamp)}
+                                        </Text>
+                                        <View style={styles.tableHeader}>
+                                            <Text style={styles.tableCell}>Test Type</Text>
+                                            <Text style={styles.tableCell}>Value</Text>
+                                            <Text style={styles.tableCell}>Referans Aralığı</Text>
+                                            <Text style={styles.tableCell}>Durum</Text>
+                                        </View>
+                                        <View style={styles.tableRow}>
+                                            <Text style={styles.tableCell}>{testType}</Text>
+                                            <Text style={styles.tableCell}>{testValue ?? 'N/A'}</Text>
+                                            <Text style={styles.tableCell}>
+                                                {range.min} - {range.max}
+                                            </Text>
+                                            <Text style={[styles.tableCell, { color }]}>
+                                                {symbol}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                );
+                            });
+                        })}
                     </ScrollView>
                 </Modal>
             )}
