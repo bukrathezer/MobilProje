@@ -19,8 +19,16 @@ interface Tests {
 
 interface Guide {
     testType: string;
-    ranges: { ageGroup: string; min: number | null; max: number | null }[];
+    ranges: { ageGroup: string; min: number | null; max: number | null; ageMin: number | null; ageMax: number }[];
 }
+interface Range {
+    ageGroup: string;
+    ageMin: number | null;
+    ageMax: number | null;
+    min: number | null;
+    max: number | null;
+  }
+  
 
 interface User {
     id: string;
@@ -111,13 +119,23 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         });
     };
 
-    const handleGuideChange = (index: number, key: 'min' | 'max', value: string) => {
-        if (!guideData) return;
+    const handleGuideChange = (index: number, field: keyof Guide['ranges'][0], value: any) => {
+        setGuideData((prev) => {
+            if (!prev) return prev; // Null kontrolü
 
-        const updatedRanges = [...guideData.ranges];
-        updatedRanges[index][key] = value ? parseFloat(value) : null;
+            const updatedRanges = [...prev.ranges];
 
-        setGuideData({ ...guideData, ranges: updatedRanges });
+            // Değeri güvenli bir şekilde atama
+            updatedRanges[index] = {
+                ...updatedRanges[index],
+                [field]: value ? parseFloat(value) : null, // Eğer değeri yoksa null ata
+            };
+
+            return {
+                ...prev,
+                ranges: updatedRanges,
+            };
+        });
     };
 
     const handleAgeGroupChange = (index: number, value: string) => {
@@ -131,11 +149,25 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
 
     const addAgeGroup = () => {
-        if (!guideData) return;
+        setGuideData((prev) => {
+            if (!prev) return prev; // Eğer prev null ise, olduğu gibi geri dön
 
-        const newRanges = [...guideData.ranges, { ageGroup: '', min: null, max: null }];
-        setGuideData({ ...guideData, ranges: newRanges });
+            return {
+                ...prev,
+                ranges: [
+                    ...prev.ranges,
+                    {
+                        ageGroup: "",
+                        ageMin: 0, // Burada null yerine 0 kullanılabilir
+                        ageMax: 0,
+                        min: 0,
+                        max: 0
+                    }, // Sayılarla başlatıyoruz
+                ],
+            };
+        });
     };
+
 
     const saveGuideToDatabase = async () => {
         if (!guideData) return;
@@ -224,6 +256,48 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             Alert.alert('Error', 'Logout failed.');
         }
     };
+    const getRangeForAge = (guides: Guide[], testType: string, ageInMonths: number): Range | null => {
+        const guide = guides.find((guide) => guide.testType === testType);
+        if (!guide) return null;
+      
+        const range = guide.ranges.find(
+          (r) => ageInMonths >= r.ageMin! && ageInMonths <= r.ageMax!
+        );
+        return range || null;
+      };
+      
+      const compareValueWithRange = (value: number, range: Range): "low" | "high" | "normal" => {
+        if (range.min !== null && value < range.min) {
+          return "low";
+        } else if (range.max !== null && value > range.max) {
+          return "high";
+        } else {
+          return "normal";
+        }
+      };
+      
+      const evaluateTestResult = (guides: Guide[], testType: string, ageInMonths: number, testValue: number): string => {
+        const range = getRangeForAge(guides, testType, ageInMonths);
+      
+        if (!range) {
+          return "No valid range found for this test type and age.";
+        }
+      
+        const result = compareValueWithRange(testValue, range);
+      
+        switch (result) {
+          case "low":
+            return "Your value is too low.";
+          case "high":
+            return "Your value is too high.";
+          case "normal":
+            return "Your value is within the normal range.";
+          default:
+            return "Unable to evaluate.";
+        }
+      };
+
+      
 
     return (
         <View style={styles.container}>
@@ -282,30 +356,48 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                 <>
                                     <Text style={styles.modalTitle}>Guide for {selectedTest}</Text>
                                     {guideData?.ranges.map((range, index) => (
-                                        <ScrollView key={index} style={styles.inputContainer}>
-                                            <View key={index} style={styles.inputContainer}>
+                                        <View key={index} style={styles.inputContainer}>
+                                            <Text>Age Group</Text>
                                             <TextInput
                                                 style={styles.input}
                                                 placeholder="Age Group"
                                                 value={range.ageGroup}
                                                 onChangeText={(value) => handleAgeGroupChange(index, value)}
                                             />
+                                            <Text>Age Min</Text>
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="Age Min"
+                                                keyboardType="numeric"
+                                                value={range.ageMin?.toString() || ""}
+                                                onChangeText={(value) => handleGuideChange(index, "ageMin", value)}
+                                            />
+                                            <Text>Age Max</Text>
+                                            <TextInput
+                                                style={styles.input}
+                                                placeholder="Age Max"
+                                                keyboardType="numeric"
+                                                value={range.ageMax?.toString() || ""}
+                                                onChangeText={(value) => handleGuideChange(index, "ageMax", value)}
+                                            />
+                                            <Text>Min</Text>
                                             <TextInput
                                                 style={styles.input}
                                                 placeholder="Min"
-                                                keyboardType="numeric"
-                                                value={range.min?.toString() || ''}
-                                                onChangeText={(value) => handleGuideChange(index, 'min', value)}
+                                                keyboardType="decimal-pad"
+                                                value={range.min?.toString() || ""}
+                                                onChangeText={(value) => handleGuideChange(index, "min", value)}
                                             />
+                                            <Text>Max</Text>
                                             <TextInput
                                                 style={styles.input}
                                                 placeholder="Max"
-                                                keyboardType="numeric"
-                                                value={range.max?.toString() || ''}
-                                                onChangeText={(value) => handleGuideChange(index, 'max', value)}
+                                                keyboardType="decimal-pad"
+                                                value={range.max?.toString() || ""}
+                                                onChangeText={(value) => handleGuideChange(index, "max", value)}
                                             />
-                                            </View>
-                                        </ScrollView>
+
+                                        </View>
                                     ))}
                                     <Button title="Add Age Group" onPress={addAgeGroup} />
                                     <View style={styles.buttonRow}>
@@ -333,15 +425,17 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                     <View key={index} style={styles.guideContainer}>
                                         <Text style={styles.guideTitle}>Test: {guide.testType}</Text>
                                         <View style={styles.tableHeader}>
-                                            <Text style={styles.tableCell}>Age Group</Text>
+                                            <Text style={styles.tableCell}>Age Min</Text>
+                                            <Text style={styles.tableCell}>Age Max</Text>
                                             <Text style={styles.tableCell}>Min</Text>
                                             <Text style={styles.tableCell}>Max</Text>
                                         </View>
                                         {guide.ranges.map((range, rangeIndex) => (
                                             <View key={rangeIndex} style={styles.tableRow}>
-                                                <Text style={styles.tableCell}>{range.ageGroup}</Text>
-                                                <Text style={styles.tableCell}>{range.min ?? 'N/A'}</Text>
-                                                <Text style={styles.tableCell}>{range.max ?? 'N/A'}</Text>
+                                                <Text style={styles.tableCell}>{range.ageMin ?? "N/A"}</Text>
+                                                <Text style={styles.tableCell}>{range.ageMax ?? "N/A"}</Text>
+                                                <Text style={styles.tableCell}>{range.min ?? "N/A"}</Text>
+                                                <Text style={styles.tableCell}>{range.max ?? "N/A"}</Text>
                                             </View>
                                         ))}
                                     </View>
@@ -356,7 +450,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     </View>
                 </Modal>
             )}
-            
+
             {/* Add Test Modal */}
             <Modal visible={modalVisible} animationType="slide" transparent={true}>
                 <View style={styles.modalContainer}>
