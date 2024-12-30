@@ -5,6 +5,7 @@ import { collection, getDocs, addDoc, query, where } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { NavigationProp } from '@react-navigation/native';
 import { ToastAndroid } from 'react-native'; // For displaying the guide created message
+import { MaskedTextInput } from 'react-native-mask-text';
 
 interface Tests {
     IgA: number | null;
@@ -36,7 +37,7 @@ interface User {
     lastName: string;
     email: string;
     role: string;
-    age: number | null;
+    ageInMonths: number | null;
 }
 
 interface AdminDashboardProps {
@@ -82,7 +83,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                         lastName: data.lastName,
                         email: data.email,
                         role: data.role,
-                        age: data.age || null,
+                        ageInMonths: data.ageInMonths || null,
                     };
                 });
                 setUsers(usersList);
@@ -327,7 +328,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                             <Text style={styles.label}>Email:</Text> {item.email}
                         </Text>
                         <Text style={styles.userInfo}>
-                            <Text style={styles.label}>Age:</Text> {item.age ?? 'N/A'}
+                            <Text style={styles.label}>ageInMonths:</Text> {item.ageInMonths ?? 'N/A'}
                         </Text>
                         <Button title="Edit Tests" onPress={() => handleEdit(item)} />
                         <View style={styles.addTestButton}>
@@ -372,7 +373,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                 style={styles.input}
                                                 placeholder="Age Min"
                                                 keyboardType="numeric"
-                                                value={range.ageMin?.toString() || ""}
+                                                //value={range.ageMin?.toString() || ""}
                                                 onChangeText={(value) => handleGuideChange(index, "ageMin", value)}
                                             />
                                             <Text>Age Max</Text>
@@ -380,15 +381,15 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                 style={styles.input}
                                                 placeholder="Age Max"
                                                 keyboardType="numeric"
-                                                value={range.ageMax?.toString() || ""}
+                                                //value={range.ageMax?.toString() || ""}
                                                 onChangeText={(value) => handleGuideChange(index, "ageMax", value)}
                                             />
                                             <Text>Min</Text>
                                             <TextInput
                                                 style={styles.input}
                                                 placeholder="Min"
-                                                keyboardType="decimal-pad"
-                                                value={range.min?.toString() || ""}
+                                                keyboardType="numeric"
+                                                //value={range.min?.toString() || ""}
                                                 onChangeText={(value) => handleGuideChange(index, "min", value)}
                                             />
                                             <Text>Max</Text>
@@ -396,7 +397,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                 style={styles.input}
                                                 placeholder="Max"
                                                 keyboardType="decimal-pad"
-                                                value={range.max?.toString() || ""}
+                                                //value={range.max?.toString() || ""}
                                                 onChangeText={(value) => handleGuideChange(index, "max", value)}
                                             />
 
@@ -472,49 +473,49 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                 style={styles.input}
                                 placeholder="IgA"
                                 keyboardType="numeric"
-                                value={newTest.IgA?.toString()}
+                                //value={newTest.IgA?.toString()}
                                 onChangeText={(text) => setNewTest({ ...newTest, IgA: Number(text) })}
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgM"
                                 keyboardType="numeric"
-                                value={newTest.IgM?.toString()}
+                                //value={newTest.IgM?.toString()}
                                 onChangeText={(text) => setNewTest({ ...newTest, IgM: Number(text) })}
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgG"
                                 keyboardType="numeric"
-                                value={newTest.IgG?.toString()}
+                                //value={newTest.IgG?.toString()}
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG: Number(text) })}
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgG1"
                                 keyboardType="numeric"
-                                value={newTest.IgG1?.toString()}
+                                //value={newTest.IgG1?.toString()}
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG1: Number(text) })}
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgG2"
                                 keyboardType="numeric"
-                                value={newTest.IgG2?.toString()}
+                                //value={newTest.IgG2?.toString()}
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG2: Number(text) })}
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgG3"
                                 keyboardType="numeric"
-                                value={newTest.IgG3?.toString()}
+                                //value={newTest.IgG3?.toString()}
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG3: Number(text) })}
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgG4"
                                 keyboardType="numeric"
-                                value={newTest.IgG4?.toString()}
+                                //value={newTest.IgG4?.toString()}
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG4: Number(text) })}
                             />
                             {/* Add more inputs as needed for IgG1, IgG2, IgG3, IgG4 */}
@@ -693,3 +694,7 @@ const styles = StyleSheet.create({
 });
 
 export default AdminDashboard;
+function createNumberMask(arg0: { prefix: string[]; delimiter: string; separator: string; precision: number; }) {
+    throw new Error('Function not implemented.');
+}
+
