@@ -186,6 +186,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const handleCloseGuideModal = () => {
         setGuideModalVisible(false);
         setSelectedTest(null); // Reset selected test when closing
+        setGuideData(null);
     };
 
     const addTestForUser = (user: User) => {
@@ -339,6 +340,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             {guideModalVisible && (
                 <Modal visible={guideModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
+                        <ScrollView>
                         <View style={styles.modalContent}>
                             {!selectedTest ? (
                                 <>
@@ -356,6 +358,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                 <>
                                     <Text style={styles.modalTitle}>Guide for {selectedTest}</Text>
                                     {guideData?.ranges.map((range, index) => (
+                                    
                                         <View key={index} style={styles.inputContainer}>
                                             <Text>Age Group</Text>
                                             <TextInput
@@ -407,10 +410,16 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                             onPress={() => setGuideModalVisible(false)}
                                             color="#d9534f"
                                         />
+                                        <Button
+                                            title="Close"
+                                            onPress={handleCloseGuideModal}
+                                            color="#d9534f"
+                                        />
                                     </View>
                                 </>
                             )}
                         </View>
+                            </ScrollView>
                     </View>
                 </Modal>
             )}
