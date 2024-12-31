@@ -328,6 +328,47 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         }
     };
 
+    const refreshData = async () => {
+        try {
+          // 1) Kullanıcıları çek
+          const q = query(collection(FIRESTORE_DB, 'users'), where('role', '==', 'user'));
+          const usersSnapshot = await getDocs(q);
+          const usersList: User[] = usersSnapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              firstName: data.firstName,
+              lastName: data.lastName,
+              email: data.email,
+              role: data.role,
+              ageInMonths: data.ageInMonths || null,
+            };
+          });
+          setUsers(usersList);
+          setFilteredUsers(usersList);
+      
+          // 2) Kullanıcı testlerini de çek
+          const testsPromises = usersList.map(async (user) => {
+            const testsSnapshot = await getDocs(collection(FIRESTORE_DB, `users/${user.id}/tests`));
+            const testsList: Tests[] = testsSnapshot.docs.map((doc) => parseTest(doc.data()));
+            return { userId: user.id, tests: testsList };
+          });
+          const testsResults = await Promise.all(testsPromises);
+          const testsData: { [userId: string]: Tests[] } = {};
+          testsResults.forEach(({ userId, tests }) => {
+            testsData[userId] = tests;
+          });
+          setUserTests(testsData);
+      
+          // İsterseniz Toast veya başka bir uyarı:
+          ToastAndroid.show('Data refreshed!', ToastAndroid.SHORT);
+        } catch (error) {
+          console.error('Error refreshing data:', error);
+          Alert.alert('Error', 'Failed to refresh data. Please try again.');
+        }
+      };
+      
+
     const addTestForUser = (user: User) => {
         setEditingUser(user);
         setModalVisible(true);
@@ -335,18 +376,26 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
     const handleTestSave = async () => {
         if (!editingUser) return;
+      
         const testValues = Object.values(newTest).filter((value) => value !== null && value !== undefined);
         if (testValues.length === 0) {
             Alert.alert('Validation Error', 'Please enter at least one test value.');
             return;
         }
+      
         try {
             const userTestsCollectionRef = collection(FIRESTORE_DB, `users/${editingUser.id}/tests`);
             await addDoc(userTestsCollectionRef, {
                 ...newTest,
                 timestamp: newTest.timestamp,
             });
+      
             ToastAndroid.show('Test added successfully!', ToastAndroid.SHORT);
+      
+            // 1) Sayfayı yenile (kullanıcı ve test listesini tekrar çek)
+            await refreshData();
+      
+            // 2) Modal’ı kapat ve newTest state’ini sıfırla
             setModalVisible(false);
             setNewTest({
                 IgA: null,
@@ -358,12 +407,13 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 IgG4: null,
                 timestamp: new Date(),
             });
-            fetchTestsForUser(editingUser);
+      
         } catch (error) {
             console.error('Error adding test:', error);
             Alert.alert('Error', 'Failed to add test. Please try again.');
         }
-    };
+      };
+      
 
     const fetchTestsForUser = async (user: User) => {
         try {
@@ -913,9 +963,11 @@ const handleViewAnalyses = (user: User) => {
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG4: Number(text) })}
                             />
                         </ScrollView>
-
+                        
                         <View style={styles.buttonRow}>
                             <Button title="Save Test" onPress={handleTestSave} color="#5cb85c" />
+                        </View>
+                        <View style={styles.buttonRow}>
                             <Button title="Close" onPress={() => setModalVisible(false)} color="#d9534f" />
                         </View>
                     </View>
