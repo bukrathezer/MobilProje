@@ -261,18 +261,21 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
             {showUserInfo && (
                 <View style={styles.userInfo}>
                     <Text style={styles.userInfoHeader}>My User Information</Text>
+                    <Text> Ad </Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="First Name"
+                        placeholder="Ad"
                         value={userInfo.firstName}
                         onChangeText={(text) => setUserInfo({ ...userInfo, firstName: text })}
                     />
+                    <Text> Soyad </Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Last Name"
+                        placeholder="Soyad"
                         value={userInfo.lastName}
                         onChangeText={(text) => setUserInfo({ ...userInfo, lastName: text })}
                     />
+                    <Text> Email </Text>
                     <TextInput
                         style={styles.input}
                         placeholder="Email"
@@ -281,9 +284,10 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                         keyboardType="email-address"
                         autoCapitalize="none"
                     />
+                    <Text>Yaş (Ay cinsinden) </Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Age in Months"
+                        placeholder="Yaş (Ay cinsinden)"
                         value={userInfo.ageInMonths !== null ? userInfo.ageInMonths.toString() : ''}
                         onChangeText={(text) =>
                             setUserInfo({ ...userInfo, ageInMonths: text ? parseInt(text) : null })
