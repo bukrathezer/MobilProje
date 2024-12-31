@@ -295,7 +295,6 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
             <Button
                 title="My Analyses"
                 onPress={() => {
-                    setShowAnalyses(true);
                     setShowUserInfo(false);
                     setGuideSelectionModalVisible(true);
                 }}
@@ -318,6 +317,7 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                                 onPress={() => {
                                     setSelectedGuide(guideName);
                                     setGuideSelectionModalVisible(false);
+                                    setShowAnalyses(true);
                                 }}
                             />
                         ))}
@@ -340,7 +340,10 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                     <ScrollView style={styles.scrollViewContainer}>
                         <Button
                             title="Close"
-                            onPress={() => setShowAnalyses(false)}
+                            onPress={() => {
+                                setShowAnalyses(false);
+                                // setSelectedGuide(null); // Eğer rehber seçimini sıfırlamak isterseniz
+                            }}
                             color="red"
                         />
                         {tests.length > 0 ? (
@@ -401,110 +404,110 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
 
 }
 
-    // Stil Tanımlamaları (styles) Bileşenin Dışında Tanımlanmalıdır
-    const styles = StyleSheet.create({
-        container: {
-            flex: 1,
-            padding: 10,
-            backgroundColor: '#f8f9fa',
-        },
-        scrollViewContainer: {
-            flex: 1,
-            padding: 10,
-            backgroundColor: '#f8f9fa',
-        },
-        header: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 20,
-        },
-        headerText: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            color: '#333',
-        },
-        userInfo: {
-            marginBottom: 20,
-        },
-        userInfoHeader: {
-            fontSize: 18,
-            fontWeight: 'bold',
-            marginBottom: 10,
-        },
-        input: {
-            borderWidth: 1,
-            borderColor: '#ccc',
-            padding: 8,
-            borderRadius: 5,
-            marginBottom: 10,
-        },
-        tableContainer: {
-            marginBottom: 20,
-            borderWidth: 1,
-            borderColor: '#ddd',
-            borderRadius: 5,
-            padding: 10,
-            backgroundColor: '#fff',
-        },
-        timestamp: {
-            fontSize: 14,
-            color: '#777',
-            marginBottom: 10,
-        },
-        tableHeader: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            padding: 10,
-            backgroundColor: '#e9ecef',
-            borderBottomWidth: 1,
-            borderColor: '#ccc',
-            borderRadius: 5,
-            marginBottom: 5,
-        },
-        tableCell: {
-            fontSize: 16,
-            fontWeight: 'bold',
-            flex: 1,
-            textAlign: 'center',
-        },
-        tableRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            padding: 10,
-            borderBottomWidth: 1,
-            borderColor: '#ddd',
-        },
-        loadingContainer: {
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-        },
-        modalContainer: {
-            flex: 1,
-            justifyContent: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        },
-        modalContent: {
-            backgroundColor: 'white',
-            margin: 20,
-            padding: 20,
-            borderRadius: 10,
-            alignItems: 'center',
-        },
-        modalTitle: {
-            fontSize: 18,
-            fontWeight: 'bold',
-            marginBottom: 20,
-            textAlign: 'center',
-        },
-        
-        noTestsText: {
-            textAlign: 'center',
-            marginTop: 20,
-            fontSize: 16,
-            color: '#555',
-        },
-    });
+// Stil Tanımlamaları (styles) Bileşenin Dışında Tanımlanmalıdır
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        padding: 10,
+        backgroundColor: '#f8f9fa',
+    },
+    scrollViewContainer: {
+        flex: 1,
+        padding: 10,
+        backgroundColor: '#f8f9fa',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    headerText: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    userInfo: {
+        marginBottom: 20,
+    },
+    userInfoHeader: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: '#ccc',
+        padding: 8,
+        borderRadius: 5,
+        marginBottom: 10,
+    },
+    tableContainer: {
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 5,
+        padding: 10,
+        backgroundColor: '#fff',
+    },
+    timestamp: {
+        fontSize: 14,
+        color: '#777',
+        marginBottom: 10,
+    },
+    tableHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: 10,
+        backgroundColor: '#e9ecef',
+        borderBottomWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 5,
+        marginBottom: 5,
+    },
+    tableCell: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        flex: 1,
+        textAlign: 'center',
+    },
+    tableRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: 10,
+        borderBottomWidth: 1,
+        borderColor: '#ddd',
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        margin: 20,
+        padding: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    
+    noTestsText: {
+        textAlign: 'center',
+        marginTop: 20,
+        fontSize: 16,
+        color: '#555',
+    },
+});
 
-    export default ViewTests;
+export default ViewTests;
