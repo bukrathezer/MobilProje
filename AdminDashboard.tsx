@@ -590,20 +590,20 @@ const handleViewAnalyses = (user: User) => {
     const UserCard = memo(({ user }: { user: User }) => (
         <View style={styles.userCard}>
             <Text style={styles.userInfo}>
-                <Text style={styles.label}>Name:</Text> {user.firstName} {user.lastName}
+                <Text style={styles.label}>Ad Soyad:</Text> {user.firstName} {user.lastName}
             </Text>
             <Text style={styles.userInfo}>
                 <Text style={styles.label}>Email:</Text> {user.email}
             </Text>
             <Text style={styles.userInfo}>
-                <Text style={styles.label}>Age in Months:</Text> {user.ageInMonths ?? 'N/A'}
+                <Text style={styles.label}>Yaş (Ay Cinsinden):</Text> {user.ageInMonths ?? 'N/A'}
             </Text>
-            <Button title="Edit Tests" onPress={() => handleEdit(user)} />
+            <Button title="HASTANIN TAHLİLLERİ" onPress={() => handleEdit(user)} />
             <View style={styles.addTestButton}>
-                <Button title="Add Test" onPress={() => addTestForUser(user)} color="#5cb85c" />
+                <Button title="TAHLİL EKLE" onPress={() => addTestForUser(user)} color="#5cb85c" />
             </View>
             <View style={styles.addTestButton}>
-                <Button title="View Analyses" onPress={() => handleViewAnalyses(user)} color="#0275d8" />
+                <Button title="ANALİZLERİ GÖRÜNTÜLE" onPress={() => handleViewAnalyses(user)} color="#0275d8" />
             </View>
         </View>
     ));
@@ -615,7 +615,7 @@ const handleViewAnalyses = (user: User) => {
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>Admin Dashboard</Text>
                 <Button
-                    title="Logout"
+                    title="ÇIKIŞ YAP"
                     onPress={handleLogout}
                     color="#d9534f"
                 />
@@ -624,12 +624,7 @@ const handleViewAnalyses = (user: User) => {
             {/* 2) Butonlar (My Guides, Create Guide) */}
             <View style={styles.buttonRow}>
                 <Button
-                    title="My Guides"
-                    onPress={() => setGuidesModalVisible(true)}
-                    color="#5cb85c"
-                />
-                <Button
-                    title="Create Guide"
+                    title="KILAVUZ OLUŞTUR"
                     onPress={() => setGuideModalVisible(true)}
                     color="#5cb85c"
                 />
@@ -646,7 +641,7 @@ const handleViewAnalyses = (user: User) => {
             <View style={styles.searchContainer}>
                 <TextInput
                     style={styles.searchBar}
-                    placeholder="Search by Name or Surname"
+                    placeholder="İsim ve soyisim giriniz."
                     value={searchText}
                     onChangeText={handleSearch}
                 />
@@ -807,15 +802,9 @@ const handleViewAnalyses = (user: User) => {
                                         <Button title="Add Age Group" onPress={addAgeGroup} />
                                         <View style={styles.buttonRow}>
                                             <Button title="Save Guide" onPress={saveGuideToDatabase} />
-                                            <Button
-                                                title="Cancel"
-                                                onPress={() => {
-                                                    setGuideModalVisible(false);
-                                                    setSelectedTest(null);
-                                                    setGuideData(null);
-                                                }}
-                                                color="#d9534f"
-                                            />
+
+                                        </View>
+                                        <View style={styles.buttonRow}>
                                             <Button
                                                 title="Close"
                                                 onPress={() => {
@@ -1105,7 +1094,7 @@ const handleViewAnalyses = (user: User) => {
                             />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Yaş (ay cinsinden veya dilediğiniz gibi)"
+                                placeholder="Yaş (ay cinsinden)"
                                 keyboardType="numeric"
                                 value={hizliTahlilValues.age}
                                 onChangeText={(text) => setHizliTahlilValues({ ...hizliTahlilValues, age: text })}
@@ -1120,6 +1109,9 @@ const handleViewAnalyses = (user: User) => {
                                 }}
                                 color="#5cb85c"
                             />
+                        </View>
+                        <View style={styles.buttonRow}>
+
                             <Button
                                 title="Close"
                                 onPress={() => setHizliTahlilModalVisible(false)}
@@ -1284,8 +1276,9 @@ const styles = StyleSheet.create({
     },
     buttonRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'space-around',
         marginTop: 20,
+
     },
     inputContainer: {
         marginBottom: 10,
