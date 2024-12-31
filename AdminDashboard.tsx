@@ -238,7 +238,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         const selectedSnapshot = await getDocs(collection(FIRESTORE_DB, collectionName));
         const selectedGuides = selectedSnapshot.docs.map((doc) => doc.data() as Guide);
         setGuides(selectedGuides);
-        performAnalysis(editingUser, selectedGuides);
+        performAnalysis(selectedUserForAnalysis, selectedGuides);
     };
 
     const handleSearch = (text: string) => {
@@ -576,6 +576,12 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     setAnalysisModalVisible(true);
 };
 
+const handleViewAnalyses = (user: User) => {
+    setSelectedUserForAnalysis(user);
+    setIsGuideSelectionModalVisible(true);
+};
+
+
     // --------------------------------------------------
     // -- Render Kısmı --
     // --------------------------------------------------
@@ -597,7 +603,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 <Button title="Add Test" onPress={() => addTestForUser(user)} color="#5cb85c" />
             </View>
             <View style={styles.addTestButton}>
-                <Button title="View Analyses" onPress={() => setIsGuideSelectionModalVisible(true)} color="#0275d8" />
+                <Button title="View Analyses" onPress={() => handleViewAnalyses(user)} color="#0275d8" />
             </View>
         </View>
     ));
@@ -627,16 +633,14 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     onPress={() => setGuideModalVisible(true)}
                     color="#5cb85c"
                 />
-            </View>
-
-            {/* 3) Buton (Hızlı Tahlil) */}
-            <View style={styles.buttonRow}>
                 <Button
                     title="Hızlı Tahlil"
                     onPress={() => setHizliTahlilModalVisible(true)}
                     color="#5cb85c"
                 />
             </View>
+
+
 
             {/* 4) Arama Kutusu (Search Bar) */}
             <View style={styles.searchContainer}>
