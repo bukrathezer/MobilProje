@@ -485,12 +485,12 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         setHizliTahlilResultsModalVisible(true);
     };
 
-    // Tek kılavuz analiz (kullanıcının en son testini)
-    const performAnalysis = async (user: User | null, selectedGuides: Guide[]) => {
-        if (!user) {
-            Alert.alert('Error', 'No user selected for analysis.');
-            return;
-        }
+            // performAnalysis fonksiyonu (gruplu gösterim)
+        const performAnalysis = async (user: User | null, selectedGuides: Guide[]) => {
+            if (!user) {
+                Alert.alert('Error', 'No user selected for analysis.');
+                return;
+            }
 
         const userAge = user.ageInMonths || 0;
         const userTestsList = userTests[user.id] || [];
@@ -505,41 +505,45 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             const timeB = b.timestamp?.seconds || 0;
             return timeB - timeA;
         });
-        const latestTest = sortedTests[0];
+        const groupedResults = sortedTests.map((test) => {
+            // Her test kaydının tarihini stringe çevirelim
+            const testDate = formatTimestamp(test.timestamp);
 
-        const testTypes = ['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'];
+            const testTypes: (keyof Tests)[] = ['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'];
+            const singleTestAnalysis: Array<{
+                testType: string;
+                value: number | null;
+                referenceRange: string;
+                status: string;
+                color: string;
+            }> = [];
 
-        const results: Array<{
-            testType: string;
-            value: number | null;
-            referenceRange: string;
-            status: string;
-            color: string;
-        }> = [];
+            testTypes.forEach((testType) => {
+                const testValue = test[testType];
+                if (testValue === null || testValue === undefined) return;
+    
+                // Bu testType için rehber var mı?
+                const foundGuide = selectedGuides.find(
+                    (g) => g.testType.toLowerCase() === testType.toLowerCase()
+                );
+                if (!foundGuide) {
+                    // Eğer rehber yoksa
+                    singleTestAnalysis.push({
+                        testType,
+                        value: testValue,
+                        referenceRange: 'N/A',
+                        status: 'No valid guide for this test type',
+                        color: 'grey',
+                    });
+                    return;
+                }
 
-        testTypes.forEach((testType) => {
-            const testValue = latestTest[testType as keyof Tests];
-            if (testValue === null || testValue === undefined) return;
-
-            const foundGuide = selectedGuides.find(
-                (g) => g.testType.toLowerCase() === testType.toLowerCase()
-            );
-            if (!foundGuide) {
-                results.push({
-                    testType,
-                    value: testValue,
-                    referenceRange: 'N/A',
-                    status: 'No valid guide for this test type',
-                    color: 'grey',
-                });
-                return;
-            }
-
+            // Kullanıcının yaşına göre uygun aralığı bulalım
             const foundRange = foundGuide.ranges.find(
                 (r) => (r.ageMin ?? 0) <= userAge && userAge <= (r.ageMax ?? Infinity)
             );
             if (!foundRange) {
-                results.push({
+                singleTestAnalysis.push({
                     testType,
                     value: testValue,
                     referenceRange: 'N/A',
@@ -552,7 +556,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             const { min, max } = foundRange;
             const statusObj = getStatus(testValue, min, max);
 
-            results.push({
+            singleTestAnalysis.push({
                 testType,
                 value: testValue,
                 referenceRange: `${min} - ${max}`,
@@ -560,11 +564,17 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 color: statusObj.color,
             });
         });
+        return {
+            testDate,
+            results: singleTestAnalysis,
+        };
+    });
 
-        setAnalysisResults(results);
-        setSelectedUserForAnalysis(user);
-        setAnalysisModalVisible(true);
-    };
+    // Tüm test kayıtları analiz edildi, grupluResults'u state'e kaydediyoruz
+    setAnalysisResults(groupedResults as any); // as any veya ilgili bir type tanımlayabilirsiniz
+    setSelectedUserForAnalysis(user);
+    setAnalysisModalVisible(true);
+};
 
     // --------------------------------------------------
     // -- Render Kısmı --
@@ -671,41 +681,58 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 </Modal>
             )}
 
-            {/* -------------------------- */}
             {/* Tek Kılavuz Analiz Modalı */}
-            {/* -------------------------- */}
-            {analysisModalVisible && selectedUserForAnalysis && (
-                <Modal visible={analysisModalVisible} animationType="slide" transparent={true}>
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>
-                                Analysis Results for {selectedUserForAnalysis.firstName} {selectedUserForAnalysis.lastName}
+{analysisModalVisible && selectedUserForAnalysis && (
+    <Modal
+        visible={analysisModalVisible}
+        animationType="slide"
+        transparent={true}
+    >
+        <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>
+                    All Test Analyses for {selectedUserForAnalysis.firstName} {selectedUserForAnalysis.lastName}
+                </Text>
+                <ScrollView>
+                    {/* 
+                     analysisResults artık her bir test kaydı için { testDate, results: [...]} objelerinden oluşuyor
+                    */}
+                    {analysisResults.map((group: any, groupIndex: number) => (
+                        <View key={groupIndex} style={{ marginBottom: 20 }}>
+                            {/* Her test kaydının tarih başlığı */}
+                            <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>
+                                Test Date: {group.testDate}
                             </Text>
-                            <ScrollView>
-                                <View style={styles.tableHeader}>
-                                    <Text style={styles.tableCell}>Test Type</Text>
-                                    <Text style={styles.tableCell}>Value (Status)</Text>
-                                    <Text style={styles.tableCell}>Reference Range</Text>
+                            
+                            {/* Tablo Başlık */}
+                            <View style={styles.tableHeader}>
+                                <Text style={styles.tableCell}>Test Type</Text>
+                                <Text style={styles.tableCell}>Value (Status)</Text>
+                                <Text style={styles.tableCell}>Reference Range</Text>
+                            </View>
+
+                            {/* Her test kaydının 7 parametresi */}
+                            {group.results.map((result: any, idx: number) => (
+                                <View key={idx} style={styles.tableRow}>
+                                    <Text style={styles.tableCell}>{result.testType}</Text>
+                                    <Text style={styles.tableCell}>
+                                        {result.value !== null ? `${result.value} (${result.status})` : 'N/A'}
+                                    </Text>
+                                    <Text style={styles.tableCell}>{result.referenceRange}</Text>
                                 </View>
-                                {analysisResults.map((result, index) => (
-                                    <View key={index} style={styles.tableRow}>
-                                        <Text style={styles.tableCell}>{result.testType}</Text>
-                                        <Text style={styles.tableCell}>
-                                            {result.value !== null ? `${result.value} (${result.status})` : 'N/A'}
-                                        </Text>
-                                        <Text style={styles.tableCell}>{result.referenceRange}</Text>
-                                    </View>
-                                ))}
-                            </ScrollView>
-                            <Button
-                                title="Close"
-                                onPress={() => setAnalysisModalVisible(false)}
-                                color="#d9534f"
-                            />
+                            ))}
                         </View>
-                    </View>
-                </Modal>
-            )}
+                    ))}
+                </ScrollView>
+                <Button
+                    title="Close"
+                    onPress={() => setAnalysisModalVisible(false)}
+                    color="#d9534f"
+                />
+            </View>
+        </View>
+    </Modal>
+)}
 
             {/* ----------------------- */}
             {/* Guide Oluşturma Modalı */}
