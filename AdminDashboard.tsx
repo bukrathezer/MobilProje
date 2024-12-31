@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, memo } from 'react';
 import {
+    SafeAreaView,
     View,
     Text,
     FlatList,
@@ -23,6 +24,7 @@ import {
 } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { NavigationProp } from '@react-navigation/native';
+import Constants from "expo-constants";
 
 interface Tests {
     IgA: number | null;
@@ -593,6 +595,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const renderUserItem = ({ item }: { item: User }) => <UserCard user={item} />;
 
     return (
+        <SafeAreaView style={styles.container}>
         <View style={styles.container}>
             <View style={styles.headerButtons}>
                 <Button title="My Guides" onPress={() => setGuidesModalVisible(true)} color="#5cb85c" />
@@ -1136,6 +1139,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             </Modal>
 
         </View>
+        </SafeAreaView>
     );
 };
 
@@ -1144,6 +1148,7 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 10,
         backgroundColor: '#ffffff',
+        paddingTop: Constants.statusBarHeight
     },
     headerButtons: {
         flexDirection: 'row',
