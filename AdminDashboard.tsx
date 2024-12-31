@@ -596,26 +596,49 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
     return (
         <SafeAreaView style={styles.container}>
-        <View style={styles.container}>
-            <View style={styles.headerButtons}>
-                <Button title="My Guides" onPress={() => setGuidesModalVisible(true)} color="#5cb85c" />
-                <Button title="Create Guide" onPress={() => setGuideModalVisible(true)} color="#5cb85c" />
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Admin Dashboard</Text>
+                <Button
+                    title="Logout"
+                    onPress={handleLogout}
+                    color="#d9534f"
+                />
+            </View>
 
-                {/* Hızlı Tahlil Butonu */}
+            {/* 2) Butonlar (My Guides, Create Guide) */}
+            <View style={styles.buttonRow}>
+                <Button
+                    title="My Guides"
+                    onPress={() => setGuidesModalVisible(true)}
+                    color="#5cb85c"
+                />
+                <Button
+                    title="Create Guide"
+                    onPress={() => setGuideModalVisible(true)}
+                    color="#5cb85c"
+                />
+            </View>
+
+            {/* 3) Buton (Hızlı Tahlil) */}
+            <View style={styles.buttonRow}>
                 <Button
                     title="Hızlı Tahlil"
                     onPress={() => setHizliTahlilModalVisible(true)}
                     color="#5cb85c"
                 />
+            </View>
 
+            {/* 4) Arama Kutusu (Search Bar) */}
+            <View style={styles.searchContainer}>
                 <TextInput
                     style={styles.searchBar}
                     placeholder="Search by Name or Surname"
                     value={searchText}
                     onChangeText={handleSearch}
                 />
-                <Button title="Logout" onPress={handleLogout} color="#d9534f" />
             </View>
+
+
 
             <FlatList
                 data={filteredUsers}
@@ -949,7 +972,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                     <Text style={styles.tableCell}>Test Type</Text>
                                                     <Text style={styles.tableCell}>Value</Text>
                                                     <Text style={styles.tableCell}>Change</Text>
-                                                    <Text style={styles.tableCell}>Status</Text>
                                                 </View>
                                                 {['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'].map((testType) => {
                                                     const testValue = test[testType as keyof Tests] ?? null;
@@ -979,7 +1001,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                             <Text style={styles.tableCell}>{testType}</Text>
                                                             <Text style={styles.tableCell}>{testValue !== null ? testValue : 'N/A'}</Text>
                                                             <Text style={styles.tableCell}>{changeSymbol}</Text>
-                                                            <Text style={[styles.tableCell, { color }]}>{statusSymbol}</Text>
                                                         </View>
                                                     );
                                                 })}
@@ -1138,7 +1159,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 </View>
             </Modal>
 
-        </View>
         </SafeAreaView>
     );
 };
@@ -1155,6 +1175,36 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 10,
+    },
+    header: {
+        // Üst Bar
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingBottom: 10,
+        borderBottomWidth: 1,
+        borderColor: '#ccc',
+        backgroundColor: '#f8f8f8',
+    },
+    searchContainer: {
+        marginHorizontal: 10,
+        marginVertical: 10,       // Hem üst-hem alt boşluk (opsiyonel)
+        padding: 10,             // İç boşluk
+        borderRadius: 8,         // Köşeleri yuvarlat
+        backgroundColor: '#fff', // Arka plan rengi
+        // iOS gölge
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        // Android gölge
+        elevation: 2,
+    },
+
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
     },
     userCard: {
         padding: 15,
@@ -1264,8 +1314,8 @@ const styles = StyleSheet.create({
         borderColor: '#ccc',
         borderWidth: 1,
         borderRadius: 5,
-        marginHorizontal: 10,
         paddingHorizontal: 10,
+        marginTop: 10,
     },
     timestamp: {
         marginBottom: 8,
