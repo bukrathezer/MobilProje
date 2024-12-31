@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-    View, SafeAreaView,Text, Button, StyleSheet, FlatList, TextInput, Alert, Modal, ScrollView, ActivityIndicator 
+    View, SafeAreaView, Text, Button, StyleSheet, FlatList, TextInput, Alert, Modal, ScrollView, ActivityIndicator 
 } from 'react-native';
 import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { doc, getDoc, updateDoc, getDocs, collection, Timestamp } from 'firebase/firestore';
@@ -10,7 +10,7 @@ import { signOut, updatePassword } from 'firebase/auth';
 import Constants from "expo-constants";
 
 interface Tests {
-    timestamp: number;
+    timestamp: any;  // Firestore'dan gelebilir => { seconds: number, nanoseconds: number } veya number
     IgA?: number | null;
     IgG?: number | null;
     IgG1?: number | null;
@@ -135,9 +135,6 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
             const testsSnapshot = await getDocs(collection(FIRESTORE_DB, `users/${userId}/tests`));
             const testsList: Tests[] = testsSnapshot.docs.map((doc) => {
                 const data = doc.data();
-                if (data.timestamp && data.timestamp instanceof Timestamp) {
-                    data.timestamp = data.timestamp.toDate().getTime(); // Firestore Timestamp'ı milisaniyeye çevirme
-                }
                 return data as Tests;
             });
             setTests(testsList);
@@ -150,9 +147,19 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
     };
 
     // Timestamp'i Okunabilir Formata Çevirme Fonksiyonu
-    const formatTimestamp = (timestamp: number) => {
-        const date = new Date(timestamp);
-        return date.toLocaleString();
+    const formatTimestamp = (timestamp: any) => {
+        if (!timestamp) return 'N/A';
+        // Eğer timestamp Firestore Timestamp tipindeyse:
+        if (timestamp.seconds) {
+            const date = new Date(timestamp.seconds * 1000);
+            return date.toLocaleString();
+        } 
+        // Eğer doğrudan milisaniye ise:
+        if (typeof timestamp === 'number') {
+            const date = new Date(timestamp);
+            return date.toLocaleString();
+        }
+        return 'N/A';
     };
 
     // Rehberleri Çekme Fonksiyonu
@@ -200,7 +207,6 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
         []
     );
 
-    // Kullanıcı verilerini ve rehberleri çekme
     useEffect(() => {
         fetchUserData();
         fetchTestsForUser();
@@ -217,24 +223,40 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
     }
 
     return (
-       <SafeAreaView style={styles.container}>
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.container}>
+
             {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerText}>
-                    Hoşgeldiniz {userInfo.firstName} {userInfo.lastName}
+                    Hoş Geldiniz {userInfo.firstName} {userInfo.lastName}
                 </Text>
-                <Button title="Log Out" onPress={handleSignOut} color="red" />
+                <Button title="ÇIKIŞ YAP" onPress={handleSignOut} color="red" />
             </View>
 
-            {/* Kullanıcı Bilgilerini Gösterme Butonu */}
-            <Button
-                title="My User Information"
-                onPress={() => {
-                    setShowUserInfo(true);
-                    setShowAnalyses(false);
-                }}
-            />
+            {/* 2 Sabit Boyutlu Buton */}
+            <View style={styles.buttonRow}>
+                <View style={styles.buttonWrapper}>
+                    <Button
+                        title="Hesap Ayarları"
+                        onPress={() => {
+                            setShowUserInfo(true);
+                            setShowAnalyses(false);
+                        }}
+                        color="#007bff"
+                    />
+                </View>
+                <View style={styles.buttonWrapper}>
+                    <Button
+                        title="Tahlil Sonuçları"
+                        onPress={() => {
+                            setShowUserInfo(false);
+                            setGuideSelectionModalVisible(true);
+                        }}
+                        color="#28a745"
+                    />
+                </View>
+            </View>
 
             {showUserInfo && (
                 <View style={styles.userInfo}>
@@ -244,14 +266,12 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                         placeholder="First Name"
                         value={userInfo.firstName}
                         onChangeText={(text) => setUserInfo({ ...userInfo, firstName: text })}
-                        accessibilityLabel="First Name Input"
                     />
                     <TextInput
                         style={styles.input}
                         placeholder="Last Name"
                         value={userInfo.lastName}
                         onChangeText={(text) => setUserInfo({ ...userInfo, lastName: text })}
-                        accessibilityLabel="Last Name Input"
                     />
                     <TextInput
                         style={styles.input}
@@ -260,7 +280,6 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                         onChangeText={(text) => setUserInfo({ ...userInfo, email: text })}
                         keyboardType="email-address"
                         autoCapitalize="none"
-                        accessibilityLabel="Email Input"
                     />
                     <TextInput
                         style={styles.input}
@@ -270,16 +289,16 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                             setUserInfo({ ...userInfo, ageInMonths: text ? parseInt(text) : null })
                         }
                         keyboardType="numeric"
-                        accessibilityLabel="Age in Months Input"
                     />
-                    <Button title="Save Changes" onPress={handleSaveUserInfo} />
+                    <Button title="Save Changes" onPress={handleSaveUserInfo} color="#16a085" />
+
+                    <Text style={[styles.userInfoHeader, { marginTop: 20 }]}>Change Password</Text>
                     <TextInput
                         placeholder="New Password"
                         secureTextEntry
                         style={styles.input}
                         value={newPassword}
                         onChangeText={setNewPassword}
-                        accessibilityLabel="New Password Input"
                     />
                     <TextInput
                         placeholder="Confirm Password"
@@ -287,20 +306,10 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                         style={styles.input}
                         value={confirmPassword}
                         onChangeText={setConfirmPassword}
-                        accessibilityLabel="Confirm Password Input"
                     />
-                    <Button title="Update Password" onPress={handleUpdatePassword} />
+                    <Button title="Update Password" onPress={handleUpdatePassword} color="#16a085" />
                 </View>
             )}
-
-            {/* Analizleri Gösterme Butonu */}
-            <Button
-                title="My Analyses"
-                onPress={() => {
-                    setShowUserInfo(false);
-                    setGuideSelectionModalVisible(true);
-                }}
-            />
 
             {/* Rehber Seçim Modalı */}
             <Modal
@@ -321,12 +330,13 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                                     setGuideSelectionModalVisible(false);
                                     setShowAnalyses(true);
                                 }}
+                                color="#2ecc71"
                             />
                         ))}
                         <Button
                             title="Close"
                             onPress={() => setGuideSelectionModalVisible(false)}
-                            color="red"
+                            color="#c0392b"
                         />
                     </View>
                 </View>
@@ -340,85 +350,94 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                     onRequestClose={() => setShowAnalyses(false)}
                 >
                     <ScrollView style={styles.scrollViewContainer}>
-                        <Button
-                            title="Close"
-                            onPress={() => {
-                                setShowAnalyses(false);
-                                // setSelectedGuide(null); // Eğer rehber seçimini sıfırlamak isterseniz
-                            }}
-                            color="red"
-                        />
+                        <View style={{ marginVertical: 10 }}>
+                            <Button
+                                title="Close"
+                                onPress={() => setShowAnalyses(false)}
+                                color="#c0392b"
+                            />
+                        </View>
                         {tests.length > 0 ? (
-                            tests.map((test, index) => {
-                                const userAge = userInfo.ageInMonths || 0;
-                                const testTypes = ['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'];
+                            tests
+                                .slice()
+                                // en yeni en üstte
+                                .sort((a, b) => {
+                                    const timeA = a.timestamp?.seconds || 0;
+                                    const timeB = b.timestamp?.seconds || 0;
+                                    return timeB - timeA;
+                                })
+                                .map((test, index) => {
+                                    const userAge = userInfo.ageInMonths || 0;
+                                    const testTypes = ['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'];
 
-                                return testTypes.map((testType) => {
-                                    const range = getGuideForTestAndAge(guides[selectedGuide], testType, userAge);
-                                    const testValue = test[testType as keyof Tests] || 0;
+                                    return testTypes.map((testType) => {
+                                        const guideList = guides[selectedGuide];
+                                        if (!guideList) return null; // Emniyet
 
-                                    if (!range) {
+                                        const range = getGuideForTestAndAge(guideList, testType, userAge);
+                                        const testValue = test[testType as keyof Tests] || 0;
+
+                                        if (!range) {
+                                            return (
+                                                <View key={`${index}-${testType}`} style={styles.tableContainer}>
+                                                    <Text style={styles.timestamp}>
+                                                        Timestamp: {formatTimestamp(test.timestamp)}
+                                                    </Text>
+                                                    <Text>Guide bulunamadı.</Text>
+                                                </View>
+                                            );
+                                        }
+
+                                        const { symbol, color } = getStatus(testValue, range.min, range.max);
+
                                         return (
                                             <View key={`${index}-${testType}`} style={styles.tableContainer}>
                                                 <Text style={styles.timestamp}>
                                                     Timestamp: {formatTimestamp(test.timestamp)}
                                                 </Text>
-                                                <Text>Guide bulunamadı.</Text>
+                                                <View style={styles.tableHeader}>
+                                                    <Text style={styles.tableCell}>Test Type</Text>
+                                                    <Text style={styles.tableCell}>Value</Text>
+                                                    <Text style={styles.tableCell}>Referans Aralığı</Text>
+                                                    <Text style={styles.tableCell}>Durum</Text>
+                                                </View>
+                                                <View style={styles.tableRow}>
+                                                    <Text style={styles.tableCell}>{testType}</Text>
+                                                    <Text style={styles.tableCell}>{testValue ?? 'N/A'}</Text>
+                                                    <Text style={styles.tableCell}>
+                                                        {range.min} - {range.max}
+                                                    </Text>
+                                                    <Text style={[styles.tableCell, { color }]}>
+                                                        {symbol}
+                                                    </Text>
+                                                </View>
                                             </View>
                                         );
-                                    }
-
-                                    const { symbol, color } = getStatus(testValue, range.min, range.max);
-
-                                    return (
-                                        <View key={`${index}-${testType}`} style={styles.tableContainer}>
-                                            <Text style={styles.timestamp}>
-                                                Timestamp: {formatTimestamp(test.timestamp)}
-                                            </Text>
-                                            <View style={styles.tableHeader}>
-                                                <Text style={styles.tableCell}>Test Type</Text>
-                                                <Text style={styles.tableCell}>Value</Text>
-                                                <Text style={styles.tableCell}>Referans Aralığı</Text>
-                                                <Text style={styles.tableCell}>Durum</Text>
-                                            </View>
-                                            <View style={styles.tableRow}>
-                                                <Text style={styles.tableCell}>{testType}</Text>
-                                                <Text style={styles.tableCell}>{testValue ?? 'N/A'}</Text>
-                                                <Text style={styles.tableCell}>
-                                                    {range.min} - {range.max}
-                                                </Text>
-                                                <Text style={[styles.tableCell, { color }]}>
-                                                    {symbol}
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    );
-                                });
-                            })
+                                    });
+                                })
                         ) : (
                             <Text style={styles.noTestsText}>No tests available.</Text>
                         )}
                     </ScrollView>
                 </Modal>
             )}
-        </View>
+
+          </View>
         </SafeAreaView>
     );
+};
 
-}
-
-// Stil Tanımlamaları (styles) Bileşenin Dışında Tanımlanmalıdır
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 10,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: '#ecf0f1',
         paddingTop: Constants.statusBarHeight
     },
     scrollViewContainer: {
         flex: 1,
         padding: 10,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: '#ecf0f1',
     },
     header: {
         flexDirection: 'row',
@@ -431,26 +450,52 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         color: '#333',
     },
+
+    // Butonları dikey eksende ortalamak ve boyutu sabit tutmak için
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    buttonWrapper: {
+        width: 180,          // Sabit genişlik
+        height: 50,          // Sabit yükseklik
+        marginHorizontal: 10,
+        borderRadius: 12,
+        overflow: 'hidden',
+        // İçerikteki metin büyüyüp küçülse bile
+        // bu <View> boyutu değişmez
+        justifyContent: 'center',  // Buton metnini dikey ortala
+        alignItems: 'center',      // Buton metnini yatay ortala
+    },
+
     userInfo: {
         marginBottom: 20,
+        backgroundColor: '#ffffff',
+        padding: 15,
+        borderRadius: 8,
     },
     userInfoHeader: {
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 10,
+        color: '#34495e',
     },
     input: {
         borderWidth: 1,
         borderColor: '#ccc',
-        padding: 8,
-        borderRadius: 5,
+        backgroundColor: '#fff',
+        padding: 10,
+        paddingHorizontal: 12,
+        borderRadius: 8,
         marginBottom: 10,
     },
     tableContainer: {
         marginBottom: 20,
         borderWidth: 1,
         borderColor: '#ddd',
-        borderRadius: 5,
+        borderRadius: 8,
         padding: 10,
         backgroundColor: '#fff',
     },
@@ -458,29 +503,38 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#777',
         marginBottom: 10,
+        fontStyle: 'italic',
     },
     tableHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         padding: 10,
-        backgroundColor: '#e9ecef',
+        backgroundColor: '#dfe6e9',
         borderBottomWidth: 1,
         borderColor: '#ccc',
-        borderRadius: 5,
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
         marginBottom: 5,
     },
     tableCell: {
-        fontSize: 16,
-        fontWeight: 'bold',
+        fontSize: 15,
+        fontWeight: '600',
         flex: 1,
         textAlign: 'center',
+        color: '#2c3e50',
     },
     tableRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         padding: 10,
-        borderBottomWidth: 1,
+        borderBottomWidth: 0.5,
         borderColor: '#ddd',
+    },
+    noTestsText: {
+        textAlign: 'center',
+        marginTop: 20,
+        fontSize: 16,
+        color: '#555',
     },
     loadingContainer: {
         flex: 1,
@@ -496,7 +550,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'white',
         margin: 20,
         padding: 20,
-        borderRadius: 10,
+        borderRadius: 12,
         alignItems: 'center',
     },
     modalTitle: {
@@ -504,13 +558,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginBottom: 20,
         textAlign: 'center',
-    },
-    
-    noTestsText: {
-        textAlign: 'center',
-        marginTop: 20,
-        fontSize: 16,
-        color: '#555',
+        color: '#2c3e50',
     },
 });
 
