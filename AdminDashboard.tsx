@@ -32,7 +32,7 @@ interface Tests {
     IgG2: number | null;
     IgG3: number | null;
     IgG4: number | null;
-    timestamp: any; // Kullanıcının belirttiği gibi 'any' olarak bırakıldı
+    timestamp: any;
 }
 
 interface Guide {
@@ -64,10 +64,10 @@ interface AdminDashboardProps {
 const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const [users, setUsers] = useState<User[]>([]);
     const [guides, setGuides] = useState<Guide[]>([]);
-    const [modalVisible, setModalVisible] = useState(false); // Add Test Modal
-    const [editModalVisible, setEditModalVisible] = useState(false); // Edit Test Modal
-    const [guideModalVisible, setGuideModalVisible] = useState(false); // Create Guide Modal
-    const [guidesModalVisible, setGuidesModalVisible] = useState(false); // View Guides Modal
+    const [modalVisible, setModalVisible] = useState(false);
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [guideModalVisible, setGuideModalVisible] = useState(false);
+    const [guidesModalVisible, setGuidesModalVisible] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [userTests, setUserTests] = useState<{ [userId: string]: Tests[] }>({});
     const [selectedTest, setSelectedTest] = useState<string | null>(null);
@@ -83,7 +83,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         IgG2: null,
         IgG3: null,
         IgG4: null,
-        timestamp: new Date(), // Kullanıcının belirttiği gibi 'any' tipiyle bırakıldı
+        timestamp: new Date(),
     });
 
     const [analysisModalVisible, setAnalysisModalVisible] = useState<boolean>(false);
@@ -96,14 +96,44 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         color: string;
     }>>([]);
 
-    // Rehber Koleksiyonları
-    const guideCollections = ['guides', 'Guides2', 'Guides3', 'Guides4', 'Guides5'];
+    // Hızlı Tahlil
+    const [hizliTahlilModalVisible, setHizliTahlilModalVisible] = useState<boolean>(false);
+    const [hizliTahlilResultsModalVisible, setHizliTahlilResultsModalVisible] = useState<boolean>(false);
 
-    // Yeni Eklenecek State Değişkenleri
+    const [hizliTahlilValues, setHizliTahlilValues] = useState<{
+        IgA: string;
+        IgM: string;
+        IgG: string;
+        IgG1: string;
+        IgG2: string;
+        IgG3: string;
+        IgG4: string;
+        age: string;
+    }>({
+        IgA: '',
+        IgM: '',
+        IgG: '',
+        IgG1: '',
+        IgG2: '',
+        IgG3: '',
+        IgG4: '',
+        age: '',
+    });
+
+    const [hizliTahlilResults, setHizliTahlilResults] = useState<Array<{
+        testType: string;
+        collectionName: string;
+        value: number | null;
+        referenceRange: string;
+        status: string;
+        color: string;
+    }>>([]);
+
+    const guideCollections = ['guides', 'Guides2', 'Guides3', 'Guides4', 'Guides5'];
     const [isGuideSelectionModalVisible, setIsGuideSelectionModalVisible] = useState<boolean>(false);
     const [selectedGuideCollection, setSelectedGuideCollection] = useState<string | null>(null);
 
-    // Yardımcı Fonksiyon: Firestore Dokümanını Tests Arayüzüne Dönüştürme
+    // Tests veri parse
     const parseTest = (data: any): Tests => ({
         IgA: typeof data.IgA === 'number' ? data.IgA : null,
         IgM: typeof data.IgM === 'number' ? data.IgM : null,
@@ -112,24 +142,12 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         IgG2: typeof data.IgG2 === 'number' ? data.IgG2 : null,
         IgG3: typeof data.IgG3 === 'number' ? data.IgG3 : null,
         IgG4: typeof data.IgG4 === 'number' ? data.IgG4 : null,
-        timestamp: data.timestamp, // Kullanıcının belirttiği gibi değiştirilmedi
+        timestamp: data.timestamp,
     });
 
-    // getGuideForTestAndAge Fonksiyonu
-    const getGuideForTestAndAge = useCallback(
-        (guideList: Guide[], testType: string, age: number): Range | null => {
-            const guide = guideList.find(g => g.testType.toLowerCase() === testType.toLowerCase());
-            if (!guide) return null;
-
-            const range = guide.ranges.find(r => (r.ageMin ?? 0) <= age && age <= (r.ageMax ?? Infinity));
-            return range || null;
-        },
-        []
-    );
-
-    // getStatus Fonksiyonu
+    // getStatus (value null değilmiş gibi davranacaksanız, parametre tipini güncelleyebilirsiniz)
     const getStatus = useCallback(
-        (value: number, min: number | null, max: number | null): { symbol: string, color: string } => {
+        (value: number, min: number | null, max: number | null): { symbol: string; color: string } => {
             if (min !== null && value < min) {
                 return { symbol: '↓', color: 'red' };
             } else if (max !== null && value > max) {
@@ -189,33 +207,35 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
         const fetchGuides = async () => {
             // Başlangıçta rehberleri çekmek yerine seçilen koleksiyondan çekeceğiz
-            // Bu yüzden burada herhangi bir işlem yapmıyoruz
         };
 
         fetchUsers();
         fetchGuides();
     }, []);
 
-    const fetchGuidesFromCollection = async (collectionName: string): Promise<Guide[]> => {
+    // 5 koleksiyonun her birini okur
+    const fetchAllGuides = async (): Promise<Array<{ collectionName: string; guides: Guide[] }>> => {
+        const allGuides: Array<{ collectionName: string; guides: Guide[] }> = [];
         try {
-            const guidesSnapshot = await getDocs(collection(FIRESTORE_DB, collectionName));
-            const guidesList: Guide[] = guidesSnapshot.docs.map((doc) => doc.data() as Guide);
-            console.log(`Guides from ${collectionName}:`, guidesList);
-            return guidesList;
+            for (const cName of guideCollections) {
+                const guidesSnapshot = await getDocs(collection(FIRESTORE_DB, cName));
+                const guidesList: Guide[] = guidesSnapshot.docs.map((doc) => doc.data() as Guide);
+                allGuides.push({ collectionName: cName, guides: guidesList });
+            }
+            console.log('All Guides from all collections:', allGuides);
         } catch (error) {
-            console.error(`Error fetching guides from ${collectionName}:`, error);
-            Alert.alert('Error', `Failed to fetch guides from ${collectionName}.`);
-            return [];
+            console.error('Error fetching guides:', error);
+            Alert.alert('Error', 'Failed to fetch guides.');
         }
+        return allGuides;
     };
 
     const handleGuideCollectionSelect = async (collectionName: string) => {
         setSelectedGuideCollection(collectionName);
         setIsGuideSelectionModalVisible(false);
-        // Seçilen rehber koleksiyonundan verileri çek
-        const selectedGuides = await fetchGuidesFromCollection(collectionName);
+        const selectedSnapshot = await getDocs(collection(FIRESTORE_DB, collectionName));
+        const selectedGuides = selectedSnapshot.docs.map((doc) => doc.data() as Guide);
         setGuides(selectedGuides);
-        // Analizi gerçekleştir
         performAnalysis(editingUser, selectedGuides);
     };
 
@@ -244,14 +264,11 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const handleGuideChange = (index: number, field: keyof Guide['ranges'][0], value: any) => {
         setGuideData((prev) => {
             if (!prev) return prev;
-
             const updatedRanges = [...prev.ranges];
-
             updatedRanges[index] = {
                 ...updatedRanges[index],
                 [field]: value ? parseFloat(value) : null,
             };
-
             return {
                 ...prev,
                 ranges: updatedRanges,
@@ -261,17 +278,14 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
     const handleAgeGroupChange = (index: number, value: string) => {
         if (!guideData) return;
-
         const updatedRanges = [...guideData.ranges];
         updatedRanges[index].ageGroup = value;
-
         setGuideData({ ...guideData, ranges: updatedRanges });
     };
 
     const addAgeGroup = () => {
         setGuideData((prev) => {
             if (!prev) return prev;
-
             return {
                 ...prev,
                 ranges: [
@@ -290,21 +304,16 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
     const saveGuideToDatabase = async () => {
         if (!guideData || !selectedTest) return;
-
-        // Validate guideData
         if (guideData.ranges.length === 0) {
             Alert.alert('Validation Error', 'Please add at least one age range.');
             return;
         }
-
-        // Ensure all ranges have valid min and max
         for (const range of guideData.ranges) {
             if (range.ageMin === null || range.ageMax === null || range.min === null || range.max === null) {
                 Alert.alert('Validation Error', 'All range fields must be filled.');
                 return;
             }
         }
-
         try {
             await addDoc(collection(FIRESTORE_DB, 'guides'), guideData);
             ToastAndroid.show('Guide saved successfully!', ToastAndroid.SHORT);
@@ -324,19 +333,16 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
     const handleTestSave = async () => {
         if (!editingUser) return;
-
-        // Validate test inputs
         const testValues = Object.values(newTest).filter((value) => value !== null && value !== undefined);
         if (testValues.length === 0) {
             Alert.alert('Validation Error', 'Please enter at least one test value.');
             return;
         }
-
         try {
             const userTestsCollectionRef = collection(FIRESTORE_DB, `users/${editingUser.id}/tests`);
             await addDoc(userTestsCollectionRef, {
                 ...newTest,
-                timestamp: newTest.timestamp, // Kullanıcının belirttiği gibi değiştirilmedi
+                timestamp: newTest.timestamp,
             });
             ToastAndroid.show('Test added successfully!', ToastAndroid.SHORT);
             setModalVisible(false);
@@ -350,7 +356,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 IgG4: null,
                 timestamp: new Date(),
             });
-            // Refresh tests
             fetchTestsForUser(editingUser);
         } catch (error) {
             console.error('Error adding test:', error);
@@ -381,26 +386,9 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
     const handleEdit = (user: User) => {
         setEditingUser(user);
         setEditModalVisible(true);
-        // Fetch tests if not already fetched
         if (!userTests[user.id]) {
             fetchTestsForUser(user);
         }
-    };
-
-    const fetchAllGuides = async (): Promise<Guide[]> => {
-        const allGuides: Guide[] = [];
-        try {
-            for (const collectionName of guideCollections) {
-                const guidesSnapshot = await getDocs(collection(FIRESTORE_DB, collectionName));
-                const guidesList: Guide[] = guidesSnapshot.docs.map((doc) => doc.data() as Guide);
-                allGuides.push(...guidesList);
-            }
-            console.log('All Guides:', allGuides); // Rehberlerin doğru çekildiğini kontrol edin
-        } catch (error) {
-            console.error('Error fetching guides:', error);
-            Alert.alert('Error', 'Failed to fetch guides.');
-        }
-        return allGuides;
     };
 
     const handleLogout = async () => {
@@ -413,7 +401,174 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
         }
     };
 
-    // Define a memoized UserCard component
+    // Hızlı Tahlil (çoklu rehber analizi)
+    const handleHizliTahlilAnalyze = async () => {
+        const age = parseFloat(hizliTahlilValues.age || '0');
+        const IgA = hizliTahlilValues.IgA ? parseFloat(hizliTahlilValues.IgA) : null;
+        const IgM = hizliTahlilValues.IgM ? parseFloat(hizliTahlilValues.IgM) : null;
+        const IgG = hizliTahlilValues.IgG ? parseFloat(hizliTahlilValues.IgG) : null;
+        const IgG1 = hizliTahlilValues.IgG1 ? parseFloat(hizliTahlilValues.IgG1) : null;
+        const IgG2 = hizliTahlilValues.IgG2 ? parseFloat(hizliTahlilValues.IgG2) : null;
+        const IgG3 = hizliTahlilValues.IgG3 ? parseFloat(hizliTahlilValues.IgG3) : null;
+        const IgG4 = hizliTahlilValues.IgG4 ? parseFloat(hizliTahlilValues.IgG4) : null;
+
+        const allCollections = await fetchAllGuides();
+
+        const testTypes = [
+            { key: 'IgA', value: IgA },
+            { key: 'IgM', value: IgM },
+            { key: 'IgG', value: IgG },
+            { key: 'IgG1', value: IgG1 },
+            { key: 'IgG2', value: IgG2 },
+            { key: 'IgG3', value: IgG3 },
+            { key: 'IgG4', value: IgG4 },
+        ];
+
+        const multiGuideResults: Array<{
+            testType: string;
+            collectionName: string;
+            value: number | null;
+            referenceRange: string;
+            status: string;
+            color: string;
+        }> = [];
+
+        testTypes.forEach((test) => {
+            if (test.value === null) return;
+
+            allCollections.forEach(({ collectionName, guides }) => {
+                const foundGuide = guides.find(
+                    (g) => g.testType.toLowerCase() === test.key.toLowerCase()
+                );
+                if (!foundGuide) {
+                    multiGuideResults.push({
+                        testType: test.key,
+                        collectionName,
+                        value: test.value,
+                        referenceRange: 'N/A',
+                        status: 'No guide found',
+                        color: 'grey',
+                    });
+                } else {
+                    const foundRange = foundGuide.ranges.find(
+                        (r) => (r.ageMin ?? 0) <= age && age <= (r.ageMax ?? Infinity)
+                    );
+                    if (!foundRange) {
+                        multiGuideResults.push({
+                            testType: test.key,
+                            collectionName,
+                            value: test.value,
+                            referenceRange: 'N/A',
+                            status: 'No valid range for this age',
+                            color: 'grey',
+                        });
+                    } else {
+                        const { min, max } = foundRange;
+                        // Burada value as number diyebiliriz, çünkü if (test.value === null) return'dan geçtik
+                        const statusObj = getStatus(test.value as number, min, max);
+                        multiGuideResults.push({
+                            testType: test.key,
+                            collectionName,
+                            value: test.value,
+                            referenceRange: `${min} - ${max}`,
+                            status: statusObj.symbol,
+                            color: statusObj.color,
+                        });
+                    }
+                }
+            });
+        });
+
+        setHizliTahlilResults(multiGuideResults);
+        setHizliTahlilResultsModalVisible(true);
+    };
+
+    // Tek kılavuz analiz (kullanıcının en son testini)
+    const performAnalysis = async (user: User | null, selectedGuides: Guide[]) => {
+        if (!user) {
+            Alert.alert('Error', 'No user selected for analysis.');
+            return;
+        }
+
+        const userAge = user.ageInMonths || 0;
+        const userTestsList = userTests[user.id] || [];
+
+        if (userTestsList.length === 0) {
+            Alert.alert('No Tests', 'This user has no test data.');
+            return;
+        }
+
+        const sortedTests = userTestsList.sort((a, b) => {
+            const timeA = a.timestamp?.seconds || 0;
+            const timeB = b.timestamp?.seconds || 0;
+            return timeB - timeA;
+        });
+        const latestTest = sortedTests[0];
+
+        const testTypes = ['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'];
+
+        const results: Array<{
+            testType: string;
+            value: number | null;
+            referenceRange: string;
+            status: string;
+            color: string;
+        }> = [];
+
+        testTypes.forEach((testType) => {
+            const testValue = latestTest[testType as keyof Tests];
+            if (testValue === null || testValue === undefined) return;
+
+            const foundGuide = selectedGuides.find(
+                (g) => g.testType.toLowerCase() === testType.toLowerCase()
+            );
+            if (!foundGuide) {
+                results.push({
+                    testType,
+                    value: testValue,
+                    referenceRange: 'N/A',
+                    status: 'No valid guide for this test type',
+                    color: 'grey',
+                });
+                return;
+            }
+
+            const foundRange = foundGuide.ranges.find(
+                (r) => (r.ageMin ?? 0) <= userAge && userAge <= (r.ageMax ?? Infinity)
+            );
+            if (!foundRange) {
+                results.push({
+                    testType,
+                    value: testValue,
+                    referenceRange: 'N/A',
+                    status: 'No valid range for this age',
+                    color: 'grey',
+                });
+                return;
+            }
+
+            const { min, max } = foundRange;
+            const statusObj = getStatus(testValue, min, max);
+
+            results.push({
+                testType,
+                value: testValue,
+                referenceRange: `${min} - ${max}`,
+                status: statusObj.symbol,
+                color: statusObj.color,
+            });
+        });
+
+        setAnalysisResults(results);
+        setSelectedUserForAnalysis(user);
+        setAnalysisModalVisible(true);
+    };
+
+    // --------------------------------------------------
+    // -- Render Kısmı --
+    // --------------------------------------------------
+
+    // Kullanıcı kartı
     const UserCard = memo(({ user }: { user: User }) => (
         <View style={styles.userCard}>
             <Text style={styles.userInfo}>
@@ -437,86 +592,19 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
 
     const renderUserItem = ({ item }: { item: User }) => <UserCard user={item} />;
 
-    // Perform Analysis Function
-    const performAnalysis = async (user: User | null, selectedGuides: Guide[]) => {
-        if (!user) {
-            Alert.alert('Error', 'No user selected for analysis.');
-            return;
-        }
-
-        const userAge = user.ageInMonths || 0;
-        const userTestsList = userTests[user.id] || [];
-
-        if (userTestsList.length === 0) {
-            Alert.alert('No Tests', 'This user has no test data.');
-            return;
-        }
-
-        // Sort the tests by timestamp descending and take the latest test
-        const sortedTests = userTestsList.sort((a, b) => {
-            const timeA = a.timestamp?.seconds || 0;
-            const timeB = b.timestamp?.seconds || 0;
-            return timeB - timeA;
-        });
-        const latestTest = sortedTests[0];
-        console.log('Latest Test:', latestTest);
-
-        const testTypes = ['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'];
-
-        const results: Array<{
-            testType: string;
-            value: number | null;
-            referenceRange: string;
-            status: string;
-            color: string;
-        }> = [];
-
-        testTypes.forEach((testType) => {
-            const testValue = latestTest[testType as keyof Tests];
-            if (testValue === null || testValue === undefined) return;
-
-            console.log(`Analyzing Test Type: ${testType}, User Age: ${userAge}`);
-
-            // Find relevant guide for the testType and age
-            const range = getGuideForTestAndAge(selectedGuides, testType, userAge);
-            console.log(`Range for ${testType}:`, range);
-
-            if (!range) {
-                console.warn(`No valid range found for test type ${testType} and age ${userAge}`);
-                results.push({
-                    testType,
-                    value: testValue,
-                    referenceRange: 'N/A',
-                    status: 'No valid range found for this test type and age',
-                    color: 'grey',
-                });
-                return;
-            }
-
-            const { min, max } = range;
-            const statusObj = getStatus(testValue, min, max);
-
-            results.push({
-                testType,
-                value: testValue,
-                referenceRange: `${min} - ${max}`,
-                status: statusObj.symbol,
-                color: statusObj.color,
-            });
-        });
-
-        console.log('Analysis Results:', results);
-
-        setAnalysisResults(results);
-        setSelectedUserForAnalysis(user); // Kullanıcıyı ayarla
-        setAnalysisModalVisible(true);
-    };
-
     return (
         <View style={styles.container}>
             <View style={styles.headerButtons}>
                 <Button title="My Guides" onPress={() => setGuidesModalVisible(true)} color="#5cb85c" />
                 <Button title="Create Guide" onPress={() => setGuideModalVisible(true)} color="#5cb85c" />
+
+                {/* Hızlı Tahlil Butonu */}
+                <Button
+                    title="Hızlı Tahlil"
+                    onPress={() => setHizliTahlilModalVisible(true)}
+                    color="#5cb85c"
+                />
+
                 <TextInput
                     style={styles.searchBar}
                     placeholder="Search by Name or Surname"
@@ -532,7 +620,9 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 renderItem={renderUserItem}
             />
 
-            {/* Guide Selection Modal */}
+            {/* -------------------------- */}
+            {/* Tek Kılavuz Seçim Modalı */}
+            {/* -------------------------- */}
             {isGuideSelectionModalVisible && (
                 <Modal visible={isGuideSelectionModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
@@ -541,7 +631,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                             {guideCollections.map((collectionName) => (
                                 <Button
                                     key={collectionName}
-                                    title={`Select ${collectionName.charAt(0).toUpperCase() + collectionName.slice(1)}`}
+                                    title={`Select ${collectionName}`}
                                     onPress={() => handleGuideCollectionSelect(collectionName)}
                                 />
                             ))}
@@ -555,7 +645,9 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 </Modal>
             )}
 
-            {/* Analysis Results Modal */}
+            {/* -------------------------- */}
+            {/* Tek Kılavuz Analiz Modalı */}
+            {/* -------------------------- */}
             {analysisModalVisible && selectedUserForAnalysis && (
                 <Modal visible={analysisModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
@@ -589,7 +681,9 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 </Modal>
             )}
 
-            {/* Create Guide Modal */}
+            {/* ----------------------- */}
+            {/* Guide Oluşturma Modalı */}
+            {/* ----------------------- */}
             {guideModalVisible && (
                 <Modal visible={guideModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
@@ -622,7 +716,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                     placeholder="Age Group"
                                                     value={range.ageGroup}
                                                     onChangeText={(value) => handleAgeGroupChange(index, value)}
-                                                    accessibilityLabel={`Age Group Input ${index + 1}`}
                                                 />
                                                 <Text>Age Min</Text>
                                                 <TextInput
@@ -630,7 +723,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                     placeholder="Age Min"
                                                     keyboardType="numeric"
                                                     onChangeText={(value) => handleGuideChange(index, "ageMin", value)}
-                                                    accessibilityLabel={`Age Min Input ${index + 1}`}
                                                 />
                                                 <Text>Age Max</Text>
                                                 <TextInput
@@ -638,7 +730,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                     placeholder="Age Max"
                                                     keyboardType="numeric"
                                                     onChangeText={(value) => handleGuideChange(index, "ageMax", value)}
-                                                    accessibilityLabel={`Age Max Input ${index + 1}`}
                                                 />
                                                 <Text>Min</Text>
                                                 <TextInput
@@ -646,7 +737,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                     placeholder="Min"
                                                     keyboardType="numeric"
                                                     onChangeText={(value) => handleGuideChange(index, "min", value)}
-                                                    accessibilityLabel={`Min Input ${index + 1}`}
                                                 />
                                                 <Text>Max</Text>
                                                 <TextInput
@@ -654,7 +744,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                     placeholder="Max"
                                                     keyboardType="decimal-pad"
                                                     onChangeText={(value) => handleGuideChange(index, "max", value)}
-                                                    accessibilityLabel={`Max Input ${index + 1}`}
                                                 />
                                             </View>
                                         ))}
@@ -688,7 +777,9 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 </Modal>
             )}
 
-            {/* View Guides Modal */}
+            {/* ---------------------------- */}
+            {/* Mevcut Rehberleri Gör Modalı */}
+            {/* ---------------------------- */}
             {guidesModalVisible && (
                 <Modal visible={guidesModalVisible} animationType="slide" transparent={true}>
                     <View style={styles.modalContainer}>
@@ -725,62 +816,55 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 </Modal>
             )}
 
-            {/* Add Test Modal */}
+            {/* ------------------------ */}
+            {/* Kullanıcıya Test Ekleme */}
+            {/* ------------------------ */}
             <Modal visible={modalVisible} animationType="slide" transparent={true}>
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Add Test for {editingUser?.firstName} {editingUser?.lastName}</Text>
-
-                        {/* ScrollView to make content scrollable */}
                         <ScrollView style={styles.scrollViewContainer}>
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgA"
                                 keyboardType="numeric"
                                 onChangeText={(text) => setNewTest({ ...newTest, IgA: Number(text) })}
-                                accessibilityLabel="IgA Input"
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgM"
                                 keyboardType="numeric"
                                 onChangeText={(text) => setNewTest({ ...newTest, IgM: Number(text) })}
-                                accessibilityLabel="IgM Input"
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgG"
                                 keyboardType="numeric"
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG: Number(text) })}
-                                accessibilityLabel="IgG Input"
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgG1"
                                 keyboardType="numeric"
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG1: Number(text) })}
-                                accessibilityLabel="IgG1 Input"
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgG2"
                                 keyboardType="numeric"
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG2: Number(text) })}
-                                accessibilityLabel="IgG2 Input"
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgG3"
                                 keyboardType="numeric"
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG3: Number(text) })}
-                                accessibilityLabel="IgG3 Input"
                             />
                             <TextInput
                                 style={styles.input}
                                 placeholder="IgG4"
                                 keyboardType="numeric"
                                 onChangeText={(text) => setNewTest({ ...newTest, IgG4: Number(text) })}
-                                accessibilityLabel="IgG4 Input"
                             />
                         </ScrollView>
 
@@ -792,12 +876,13 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                 </View>
             </Modal>
 
-            {/* Edit Test Modal */}
+            {/* ------------------------------ */}
+            {/* Kullanıcının Varolan Testleri */}
+            {/* ------------------------------ */}
             <Modal visible={editModalVisible} animationType="slide" transparent={true}>
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Edit Tests for {editingUser?.firstName} {editingUser?.lastName}</Text>
-
                         <ScrollView style={styles.scrollViewContainer}>
                             {editingUser?.id &&
                                 userTests[editingUser.id]
@@ -805,12 +890,10 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                     .sort((a, b) => {
                                         const timeA = a.timestamp?.seconds || 0;
                                         const timeB = b.timestamp?.seconds || 0;
-                                        return timeA - timeB; // Sort ascending
+                                        return timeA - timeB;
                                     })
                                     .map((test, index, tests) => {
                                         const previousTest = index > 0 ? tests[index - 1] : null;
-
-                                        // Analiz için rehber aralıklarını kullanın
                                         const analysis: Array<{
                                             testType: string;
                                             value: number | null;
@@ -821,9 +904,10 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                         ['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'].forEach((testType) => {
                                             const testValue = test[testType as keyof Tests] ?? null;
                                             if (testValue === null) return;
-
-                                            const range = getGuideForTestAndAge(guides, testType, editingUser.ageInMonths || 0);
-                                            if (!range) {
+                                            const foundGuide = guides.find(
+                                                (g) => g.testType.toLowerCase() === testType.toLowerCase()
+                                            );
+                                            if (!foundGuide) {
                                                 analysis.push({
                                                     testType,
                                                     value: testValue,
@@ -832,10 +916,21 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                 });
                                                 return;
                                             }
-
-                                            const { min, max } = range;
+                                            const userAge = editingUser.ageInMonths || 0;
+                                            const foundRange = foundGuide.ranges.find(
+                                                (r) => (r.ageMin ?? 0) <= userAge && userAge <= (r.ageMax ?? Infinity)
+                                            );
+                                            if (!foundRange) {
+                                                analysis.push({
+                                                    testType,
+                                                    value: testValue,
+                                                    status: 'No valid range found',
+                                                    color: 'grey',
+                                                });
+                                                return;
+                                            }
+                                            const { min, max } = foundRange;
                                             const statusObj = getStatus(testValue, min, max);
-
                                             analysis.push({
                                                 testType,
                                                 value: testValue,
@@ -851,7 +946,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                     <Text style={styles.tableCell}>Test Type</Text>
                                                     <Text style={styles.tableCell}>Value</Text>
                                                     <Text style={styles.tableCell}>Change</Text>
-                                                    <Text style={styles.tableCell}>Status</Text> {/* Yeni sütun */}
+                                                    <Text style={styles.tableCell}>Status</Text>
                                                 </View>
                                                 {['IgA', 'IgM', 'IgG', 'IgG1', 'IgG2', 'IgG3', 'IgG4'].map((testType) => {
                                                     const testValue = test[testType as keyof Tests] ?? null;
@@ -860,7 +955,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                     let statusSymbol = 'N/A';
                                                     let color = 'grey';
 
-                                                    // Change Symbolü
                                                     if (previousValue !== null && testValue !== null) {
                                                         if (testValue > previousValue) {
                                                             changeSymbol = '▲';
@@ -871,7 +965,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                         }
                                                     }
 
-                                                    // Status Symbolü
                                                     const analysisItem = analysis.find(a => a.testType === testType);
                                                     if (analysisItem) {
                                                         statusSymbol = analysisItem.status;
@@ -883,7 +976,7 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                                                             <Text style={styles.tableCell}>{testType}</Text>
                                                             <Text style={styles.tableCell}>{testValue !== null ? testValue : 'N/A'}</Text>
                                                             <Text style={styles.tableCell}>{changeSymbol}</Text>
-                                                            <Text style={[styles.tableCell, { color }]}>{statusSymbol}</Text> {/* Yeni sütun */}
+                                                            <Text style={[styles.tableCell, { color }]}>{statusSymbol}</Text>
                                                         </View>
                                                     );
                                                 })}
@@ -897,127 +990,282 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
                     </View>
                 </View>
             </Modal>
+
+            {/* -------------------------- */}
+            {/* Hızlı Tahlil Giriş Modalı */}
+            {/* -------------------------- */}
+            <Modal visible={hizliTahlilModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Hızlı Tahlil</Text>
+                        <ScrollView style={styles.scrollViewContainer}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgA"
+                                keyboardType="numeric"
+                                value={hizliTahlilValues.IgA}
+                                onChangeText={(text) => setHizliTahlilValues({ ...hizliTahlilValues, IgA: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgM"
+                                keyboardType="numeric"
+                                value={hizliTahlilValues.IgM}
+                                onChangeText={(text) => setHizliTahlilValues({ ...hizliTahlilValues, IgM: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG"
+                                keyboardType="numeric"
+                                value={hizliTahlilValues.IgG}
+                                onChangeText={(text) => setHizliTahlilValues({ ...hizliTahlilValues, IgG: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG1"
+                                keyboardType="numeric"
+                                value={hizliTahlilValues.IgG1}
+                                onChangeText={(text) => setHizliTahlilValues({ ...hizliTahlilValues, IgG1: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG2"
+                                keyboardType="numeric"
+                                value={hizliTahlilValues.IgG2}
+                                onChangeText={(text) => setHizliTahlilValues({ ...hizliTahlilValues, IgG2: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG3"
+                                keyboardType="numeric"
+                                value={hizliTahlilValues.IgG3}
+                                onChangeText={(text) => setHizliTahlilValues({ ...hizliTahlilValues, IgG3: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="IgG4"
+                                keyboardType="numeric"
+                                value={hizliTahlilValues.IgG4}
+                                onChangeText={(text) => setHizliTahlilValues({ ...hizliTahlilValues, IgG4: text })}
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Yaş (ay cinsinden veya dilediğiniz gibi)"
+                                keyboardType="numeric"
+                                value={hizliTahlilValues.age}
+                                onChangeText={(text) => setHizliTahlilValues({ ...hizliTahlilValues, age: text })}
+                            />
+                        </ScrollView>
+                        <View style={styles.buttonRow}>
+                            <Button
+                                title="Analiz Et"
+                                onPress={() => {
+                                    setHizliTahlilModalVisible(false);
+                                    handleHizliTahlilAnalyze();
+                                }}
+                                color="#5cb85c"
+                            />
+                            <Button
+                                title="Close"
+                                onPress={() => setHizliTahlilModalVisible(false)}
+                                color="#d9534f"
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ----------------------------------------------------- */}
+            {/* Hızlı Tahlil Sonuç Modal (Gruplanmış Görünüm)         */}
+            {/* ----------------------------------------------------- */}
+            <Modal visible={hizliTahlilResultsModalVisible} animationType="slide" transparent={true}>
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Hızlı Tahlil Sonuçları (5 Kılavuz)</Text>
+
+                        <ScrollView>
+                            {/** 
+                             * 1) collectionName’e göre gruplayalım 
+                             */}
+                            {/** Örnek grouping */}
+                            {(() => {
+                                // Gruplama: { [collectionName]: [...sonuçlar], ... }
+                                const groupedResults = hizliTahlilResults.reduce((acc, curr) => {
+                                    if (!acc[curr.collectionName]) {
+                                        acc[curr.collectionName] = [];
+                                    }
+                                    acc[curr.collectionName].push(curr);
+                                    return acc;
+                                }, {} as { [key: string]: typeof hizliTahlilResults });
+
+                                // 2) Her bir collectionName için ayrı tablo
+                                return Object.entries(groupedResults).map(([collectionName, results]) => (
+                                    <View key={collectionName} style={styles.groupContainer}>
+                                        <Text style={styles.groupTitle}>
+                                            Kılavuz: {collectionName}
+                                        </Text>
+                                        <View style={styles.tableHeader}>
+                                            <Text style={styles.tableCell}>Test Type</Text>
+                                            <Text style={styles.tableCell}>Value (Status)</Text>
+                                            <Text style={styles.tableCell}>Reference Range</Text>
+                                        </View>
+                                        {results.map((result, idx) => (
+                                            <View key={idx} style={styles.tableRow}>
+                                                <Text style={styles.tableCell}>{result.testType}</Text>
+                                                <Text style={styles.tableCell}>
+                                                    {result.value !== null
+                                                        ? `${result.value} (${result.status})`
+                                                        : 'N/A'
+                                                    }
+                                                </Text>
+                                                <Text style={styles.tableCell}>{result.referenceRange}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                ));
+                            })()}
+                        </ScrollView>
+
+                        <Button
+                            title="Close"
+                            onPress={() => setHizliTahlilResultsModalVisible(false)}
+                            color="#d9534f"
+                        />
+                    </View>
+                </View>
+            </Modal>
+
         </View>
     );
+};
 
-    };
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        padding: 10,
+        backgroundColor: '#ffffff',
+    },
+    headerButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    userCard: {
+        padding: 15,
+        marginVertical: 8,
+        backgroundColor: '#f1f1f1',
+        borderRadius: 8,
+    },
+    userInfo: {
+        fontSize: 16,
+        marginBottom: 5,
+    },
+    label: {
+        fontWeight: 'bold',
+    },
+    addTestButton: {
+        marginTop: 10,
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        margin: 20,
+        padding: 20,
+        borderRadius: 10,
+        flex: 1,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    input: {
+        height: 40,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        marginBottom: 10,
+        paddingHorizontal: 10,
+        borderRadius: 5,
+    },
+    scrollViewContainer: {
+        marginBottom: 20,
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 20,
+    },
+    inputContainer: {
+        marginBottom: 10,
+        width: '100%',
+    },
+    tableContainer: {
+        marginBottom: 15,
+        backgroundColor: '#f9f9f9',
+        padding: 10,
+        borderRadius: 5,
+    },
+    tableHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        backgroundColor: '#e9e9e9',
+        padding: 10,
+        borderTopLeftRadius: 5,
+        borderTopRightRadius: 5,
+    },
+    tableRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        padding: 10,
+        borderBottomWidth: 1,
+        borderColor: '#ccc',
+    },
+    tableCell: {
+        flex: 1,
+        textAlign: 'center',
+        fontWeight: '600',
+    },
+    guideContainer: {
+        marginBottom: 15,
+        padding: 10,
+        backgroundColor: '#f9f9f9',
+        borderRadius: 5,
+    },
+    guideTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 5,
+    },
+    groupContainer: {
+        marginBottom: 20,
+        backgroundColor: '#f9f9f9',
+        borderRadius: 8,
+        padding: 10,
+    },
+    groupTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 5,
+    },
+    searchBar: {
+        flex: 1,
+        height: 40,
+        borderColor: '#ccc',
+        borderWidth: 1,
+        borderRadius: 5,
+        marginHorizontal: 10,
+        paddingHorizontal: 10,
+    },
+    timestamp: {
+        marginBottom: 8,
+        fontWeight: 'bold'
+    },
+});
 
-    const styles = StyleSheet.create({
-        container: {
-            flex: 1,
-            padding: 10,
-            backgroundColor: '#ffffff',
-        },
-        headerButtons: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 10,
-        },
-        userCard: {
-            padding: 15,
-            marginVertical: 8,
-            backgroundColor: '#f1f1f1',
-            borderRadius: 8,
-        },
-        userInfo: {
-            fontSize: 16,
-            marginBottom: 5,
-        },
-        label: {
-            fontWeight: 'bold',
-        },
-        addTestButton: {
-            marginTop: 10,
-        },
-        modalContainer: {
-            flex: 1,
-            justifyContent: 'center',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        },
-        modalContent: {
-            backgroundColor: 'white',
-            margin: 20,
-            padding: 20,
-            borderRadius: 10,
-            flex: 1,
-        },
-        modalTitle: {
-            fontSize: 18,
-            fontWeight: 'bold',
-            marginBottom: 10,
-            textAlign: 'center',
-        },
-        input: {
-            height: 40,
-            borderColor: '#ccc',
-            borderWidth: 1,
-            marginBottom: 10,
-            paddingHorizontal: 10,
-            borderRadius: 5,
-        },
-        scrollViewContainer: {
-            marginBottom: 20,
-        },
-        buttonRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginTop: 20,
-        },
-        inputContainer: {
-            marginBottom: 10,
-            width: '100%',
-        },
-        tableContainer: {
-            marginBottom: 15,
-            backgroundColor: '#f9f9f9',
-            padding: 10,
-            borderRadius: 5,
-        },
-        tableHeader: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            backgroundColor: '#e9e9e9',
-            padding: 10,
-            borderTopLeftRadius: 5,
-            borderTopRightRadius: 5,
-        },
-        tableRow: {
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            padding: 10,
-            borderBottomWidth: 1,
-            borderColor: '#ccc',
-        },
-        tableCell: {
-            flex: 1,
-            textAlign: 'center',
-            fontWeight: '600',
-        },
-        guideContainer: {
-            marginBottom: 15,
-            padding: 10,
-            backgroundColor: '#f9f9f9',
-            borderRadius: 5,
-        },
-        guideTitle: {
-            fontSize: 16,
-            fontWeight: 'bold',
-            marginBottom: 5,
-        },
-        searchBar: {
-            flex: 1,
-            height: 40,
-            borderColor: '#ccc',
-            borderWidth: 1,
-            borderRadius: 5,
-            marginHorizontal: 10,
-            paddingHorizontal: 10,
-        },
-        timestamp: {
-            marginBottom: 8,
-            fontWeight: 'bold'
-        },
-    });
-
-    export default AdminDashboard;
+export default AdminDashboard;
