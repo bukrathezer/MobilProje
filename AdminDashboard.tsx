@@ -940,7 +940,6 @@ const AdminDashboard = ({ navigation }: AdminDashboardProps) => {
             margin: 20,
             padding: 20,
             borderRadius: 10,
-            maxHeight: '80%',
             flex: 1,
         },
         modalTitle: {
