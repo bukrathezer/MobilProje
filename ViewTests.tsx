@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-    View, Text, Button, StyleSheet, FlatList, TextInput, Alert, Modal, ScrollView, ActivityIndicator 
+    View, SafeAreaView,Text, Button, StyleSheet, FlatList, TextInput, Alert, Modal, ScrollView, ActivityIndicator 
 } from 'react-native';
 import { FIRESTORE_DB, FIREBASE_AUTH } from '../../FirebaseConfig';
 import { doc, getDoc, updateDoc, getDocs, collection, Timestamp } from 'firebase/firestore';
 import { signOut, updatePassword } from 'firebase/auth';
+import Constants from "expo-constants";
 
 interface Tests {
     timestamp: number;
@@ -216,6 +217,7 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
     }
 
     return (
+       <SafeAreaView style={styles.container}>
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
@@ -400,6 +402,7 @@ const ViewTests = ({ userId, firstName, lastName }: ViewTestsProps) => {
                 </Modal>
             )}
         </View>
+        </SafeAreaView>
     );
 
 }
@@ -410,6 +413,7 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 10,
         backgroundColor: '#f8f9fa',
+        paddingTop: Constants.statusBarHeight
     },
     scrollViewContainer: {
         flex: 1,
